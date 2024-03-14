@@ -14,7 +14,7 @@ class Generator:
     def uniform(self, low, high):
         return np.random.uniform(low, high, size=self.size)
 
-    def int(self, low: int = 0, high: int = 3):
+    def integer_in_interval(self, low: int = 0, high: int = 3):
         """Returns a random integer in the interval [low, high]."""
         return np.random.randint(low, high, size=self.size)
 
@@ -22,7 +22,7 @@ class Generator:
         """Returns a random number in the interval [a, b] with a given interval."""
         if interval <= 0 or interval >= 180 or interval == 0:
             return 0
-        return np.random.choice(np.arange(a, b+interval, interval), size=self.size)
+        return np.random.choice(np.arange(a, b + interval, interval), size=self.size)
 
     def normal(self, loc, scale):
         return np.random.normal(loc, scale, size=self.size)

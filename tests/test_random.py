@@ -1,9 +1,9 @@
 import numpy as np
+
 from hyper_surrogate.generator import Generator
 
 
 class TestGenerator:
-
     # The class can be instantiated without any arguments.
     def test_instantiation_without_arguments(self):
         random = Generator()
@@ -78,7 +78,6 @@ class TestGenerator:
         assert len(result) == 10
         assert all(isinstance(x, float) for x in result)
 
-
     # The uniform method returns an array of random numbers when low and high are equal.
     def test_uniform_method_returns_array_when_low_and_high_are_equal(self):
         random = Generator(seed=42, size=10)
@@ -111,6 +110,7 @@ class TestGenerator:
         assert isinstance(result, np.ndarray)
         assert len(result) == 10
         assert all(x >= 0 for x in result)
+
     # The class can be instantiated with both seed and size arguments.
     def test_instantiation_with_seed_and_size_arguments(self):
         random = Generator(seed=123, size=10)

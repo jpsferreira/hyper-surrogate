@@ -1,5 +1,7 @@
 import numpy as np
+
 from hyper_surrogate.generator import Generator
+
 
 class DeformationGradient:
     def __init__(self):
