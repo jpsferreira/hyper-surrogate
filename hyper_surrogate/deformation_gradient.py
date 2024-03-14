@@ -111,11 +111,11 @@ class DeformationGradientGenerator(DeformationGradient):
         self.generator = generator(seed=seed, size=size)
 
     def axis(self, n_axis: int = 3) -> int:
-        return self.generator.int(low=0, high=n_axis)
+        return self.generator.integer_in_interval(low=0, high=n_axis)
 
     def angle(self, min_interval: float = 5) -> float:
         min_interval = self.to_radians(min_interval)
-        return self.generator.in_interval(a=0, b=np.pi, interval=min_interval)
+        return self.generator.float_in_interval(a=0, b=np.pi, interval=min_interval)
 
     def rotate(self, n_axis: int = 3, min_interval: float = 5) -> np.ndarray:
         axis = self.axis(n_axis=n_axis)

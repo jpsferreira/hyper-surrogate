@@ -18,7 +18,7 @@ class Generator:
         """Returns a random integer in the interval [low, high]."""
         return np.random.randint(low, high, size=self.size)
 
-    def in_interval(self, a: float = 0, b: float = 180, interval: float = 5):
+    def float_in_interval(self, a: float = 0, b: float = 180, interval: float = 5):
         """Returns a random number in the interval [a, b] with a given interval."""
         if interval <= 0 or interval >= 180 or interval == 0:
             return 0

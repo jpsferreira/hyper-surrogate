@@ -49,27 +49,6 @@ class TestDeformationGradient:
         radians = rdg.to_radians(degree)
         assert isinstance(radians, float)
 
-    # can call axis method without errors
-    def test_can_call_axis_method_without_errors(self, deformation_generator):
-        try:
-            deformation_generator.axis()
-        except Exception:
-            pytest.fail("Calling axis method raised an exception")
-
-    # can call angle method without errors
-    def test_can_call_angle_method_without_errors(self, deformation_generator):
-        try:
-            deformation_generator.angle()
-        except Exception:
-            pytest.fail("Calling angle method raised an exception")
-
-    # can call random_rotation method without errors
-    def test_random_rotation_method(self, deformation_generator):
-        try:
-            deformation_generator.rotate()
-        except Exception:
-            pytest.fail("random_rotation method raised an exception unexpectedly")
-
     # can generate a random deformation gradient without errors
     def test_generate_random_deformation_gradient(self, deformation_generator):
         deformation_gradient = deformation_generator.rotate()
