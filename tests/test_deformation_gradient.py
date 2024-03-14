@@ -51,26 +51,26 @@ class TestDeformationGradient:
 
     # can generate a random deformation gradient without errors
     def test_generate_random_deformation_gradient(self, deformation_generator):
-        deformation_gradient = deformation_generator.rotate()
+        deformation_gradient = deformation_generator.generate_rotation()
         assert isinstance(deformation_gradient, np.ndarray)
 
     # n_axis=1 generates deformation gradients with zeros
     def test_n_axis_1_generates_eye(self, deformation_generator):
         np.random.seed(0)
-        result = deformation_generator.rotate(n_axis=1)
+        result = deformation_generator.generate_rotation(n_axis=1)
         expected = np.array([[[1, 0, 0], [0, 1, 0], [0, 0, 1]]])
         assert np.array_equal(result, expected)
 
     # n_axis=4 generates deformation gradients with zeros
     def test_n_axis_4_generates_eye(self, deformation_generator):
         np.random.seed(0)
-        deformation_gradient = deformation_generator.rotate(n_axis=4)
+        deformation_gradient = deformation_generator.generate_rotation(n_axis=4)
         assert np.all(deformation_gradient == np.eye(3))
 
     # can generate multiple random deformation gradients without errors
     def test_generate_multiple_random_deformation_gradients(self, deformation_generator):
         for _ in range(10):
-            deformation_gradient = deformation_generator.rotate()
+            deformation_gradient = deformation_generator.generate_rotation()
             assert isinstance(deformation_gradient, np.ndarray)
         for _ in range(10):
             deformation_gradient = deformation_generator.uniaxial(2.0)
@@ -88,18 +88,18 @@ class TestDeformationGradient:
     # min_interval=180 generates deformation gradients with eye matrix
     def test_min_interval_180_generates_eye(self, deformation_generator):
         deformation_generator.seed = 12345
-        deformation_gradient = deformation_generator.rotate(n_axis=1, min_interval=180)
+        deformation_gradient = deformation_generator.generate_rotation(n_axis=1, min_interval=180)
         assert np.all(deformation_gradient - np.eye(3) < 1e-10)
 
     # min_interval=0 generates deformation gradients with eye matrix
     def test_min_interval_zero_generates_eye(self, deformation_generator):
         deformation_generator.seed = 0
-        deformation_gradient = deformation_generator.rotate(n_axis=1, min_interval=0)
+        deformation_gradient = deformation_generator.generate_rotation(n_axis=1, min_interval=0)
         assert np.all(deformation_gradient == np.eye(3))
 
     # can generate deformation gradients with negative values
     def test_generate_deformation_gradients_with_negative_values(self, deformation_generator):
-        deformation_gradient = deformation_generator.rotate(
+        deformation_gradient = deformation_generator.generate_rotation(
             n_axis=1,
         )
         assert np.any(deformation_gradient < 0)

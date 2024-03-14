@@ -9,6 +9,15 @@ class DeformationGradient:
     def __init__(self) -> None:
         pass
 
+    def __repr__(self) -> str:
+        return "DeformationGradient"
+
+    def __str__(self) -> str:
+        return "DeformationGradient"
+
+    def __call__(self) -> str:
+        return "DeformationGradient"
+
     @staticmethod
     def uniaxial(stretch: np.ndarray) -> np.ndarray:
         stretch = np.atleast_1d(stretch)
@@ -81,10 +90,10 @@ class DeformationGradient:
 
     def rotation(self, axis: np.ndarray, angle: np.ndarray) -> np.ndarray:
         axis, angle = np.atleast_1d(axis), np.atleast_1d(angle)
-        rotations = []
+        rotation = []
         for ax, ang in zip(axis, angle):
-            rotations.append(self._axis_rotation(ax, ang))
-        return np.array(rotations)
+            rotation.append(self._axis_rotation(ax, ang))
+        return np.array(rotation)
 
     def rescale(self, F: np.ndarray) -> Any:
         return F / self.invariant3(F) ** (1.0 / 3.0)
@@ -105,6 +114,10 @@ class DeformationGradient:
     def to_radians(degree: float) -> float:
         return degree * np.pi / 180
 
+    @staticmethod
+    def rotate(F: np.ndarray, R: np.ndarray) -> Any:
+        return np.matmul(np.matmul(R, F), R.T)
+
 
 class DeformationGradientGenerator(DeformationGradient):
     def __init__(
@@ -124,7 +137,40 @@ class DeformationGradientGenerator(DeformationGradient):
         min_interval = self.to_radians(min_interval)
         return self.generator.float_in_interval(a=0, b=np.pi, interval=min_interval)
 
-    def rotate(self, n_axis: int = 3, min_interval: float = 5) -> np.ndarray:
+    def generate_rotation(self, n_axis: int = 3, min_interval: float = 5) -> np.ndarray:
         axis = self.axis(n_axis=n_axis)
         angle = self.angle(min_interval=min_interval)
         return self.rotation(axis, angle)
+
+    def generate(
+        self,
+        stretch_min: float = 0.4,
+        stretch_max: float = 3.0,
+        shear_min: float = -1,
+        shear_max: float = 1,
+    ) -> Any:
+        u, s, b1, b2 = (
+            self.generator.uniform(stretch_min, stretch_max),
+            self.generator.uniform(shear_min, shear_max),
+            self.generator.uniform(stretch_min, stretch_max),
+            self.generator.uniform(stretch_min, stretch_max),
+        )
+        fu, fs, fb = (
+            self.uniaxial(u),
+            self.shear(s),
+            self.biaxial(b1, b2),
+        )
+        r1, r2, r3 = (
+            self.generate_rotation(),
+            self.generate_rotation(),
+            self.generate_rotation(),
+        )
+
+        # rotate deformation gradients
+        fu = self.rotate(fu, r1)
+        fs = self.rotate(fs, r2)
+        fb = self.rotate(fb, r3)
+
+        # Compute deformation gradient
+        F = np.matmul(np.matmul(fb, fu), fs)
+        return F
