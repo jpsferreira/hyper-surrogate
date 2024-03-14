@@ -1,10 +1,12 @@
+from typing import Any
+
 import numpy as np
 
 from hyper_surrogate.generator import Generator
 
 
 class DeformationGradient:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @staticmethod
@@ -33,7 +35,7 @@ class DeformationGradient:
         return result
 
     @staticmethod
-    def biaxial(stretch1: float, stretch2: float) -> np.ndarray:
+    def biaxial(stretch1: np.ndarray, stretch2: np.ndarray) -> np.ndarray:
         # Calculate the third stretch factor for the entire arrays
         stretch1 = np.atleast_1d(stretch1)
         stretch2 = np.atleast_1d(stretch2)
@@ -77,26 +79,26 @@ class DeformationGradient:
         }
         return dict_axis[axis] if axis in dict_axis else np.eye(3)
 
-    def rotation(self, axis: int, angle: np.ndarray) -> np.ndarray:
+    def rotation(self, axis: np.ndarray, angle: np.ndarray) -> np.ndarray:
         axis, angle = np.atleast_1d(axis), np.atleast_1d(angle)
         rotations = []
         for ax, ang in zip(axis, angle):
             rotations.append(self._axis_rotation(ax, ang))
-            return np.array(rotations)
+        return np.array(rotations)
 
-    def rescale(self, F: np.ndarray) -> np.ndarray:
+    def rescale(self, F: np.ndarray) -> Any:
         return F / self.invariant3(F) ** (1.0 / 3.0)
 
     @staticmethod
-    def invariant1(F: np.ndarray) -> float:
+    def invariant1(F: np.ndarray) -> Any:
         return np.trace(F)
 
     @staticmethod
-    def invariant2(F: np.ndarray) -> float:
+    def invariant2(F: np.ndarray) -> Any:
         return 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
 
     @staticmethod
-    def invariant3(F: np.ndarray) -> float:
+    def invariant3(F: np.ndarray) -> Any:
         return np.linalg.det(F)
 
     @staticmethod
@@ -105,15 +107,20 @@ class DeformationGradient:
 
 
 class DeformationGradientGenerator(DeformationGradient):
-    def __init__(self, seed=None, size=None, generator=Generator):
+    def __init__(
+        self,
+        seed: int | None = None,
+        size: int | None = None,
+        generator: Generator | None = None,
+    ) -> None:
         self.seed = seed
         self.size = size
-        self.generator = generator(seed=seed, size=size)
+        self.generator = generator if generator else Generator(seed=seed, size=size)
 
-    def axis(self, n_axis: int = 3) -> int:
+    def axis(self, n_axis: int = 3) -> Any:
         return self.generator.integer_in_interval(low=0, high=n_axis)
 
-    def angle(self, min_interval: float = 5) -> float:
+    def angle(self, min_interval: float = 5) -> Any:
         min_interval = self.to_radians(min_interval)
         return self.generator.float_in_interval(a=0, b=np.pi, interval=min_interval)
 
