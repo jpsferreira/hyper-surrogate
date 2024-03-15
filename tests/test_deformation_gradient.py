@@ -113,7 +113,8 @@ class TestDeformationGradient:
 
     def test_invariant1(self, deformation_generator):
         deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
-        assert (sum(np.diag(f)) == deformation_generator.invariant1(f) for f in deformation_gradient)
+        invariant1 = deformation_generator.invariant1(deformation_gradient)
+        assert (sum(np.diag(f)) == invariant1(f) for f in deformation_gradient)
 
     def test_invariant2(self, deformation_generator):
         deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
