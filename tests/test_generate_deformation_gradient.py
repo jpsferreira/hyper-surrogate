@@ -19,6 +19,8 @@ def test_generate_def_grad(def_gradient):
     assert isinstance(stretch[1], float)
 
 
-# def test_generate_10_def_grad(def_gradient):
-#     logging.info("Testing 10 deformation gradients")
-#     logging.info(def_gradient.generate())
+def test_generate_size_def_grad(def_gradient):
+    f = def_gradient.generate()
+    assert f.shape == (10, 3, 3)
+    assert isinstance(f, np.ndarray)
+    assert isinstance(f[0, 0, 0], float)

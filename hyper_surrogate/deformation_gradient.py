@@ -9,15 +9,6 @@ class DeformationGradient:
     def __init__(self) -> None:
         pass
 
-    def __repr__(self) -> str:
-        return "DeformationGradient"
-
-    def __str__(self) -> str:
-        return "DeformationGradient"
-
-    def __call__(self) -> str:
-        return "DeformationGradient"
-
     @staticmethod
     def uniaxial(stretch: np.ndarray) -> np.ndarray:
         stretch = np.atleast_1d(stretch)
@@ -116,7 +107,9 @@ class DeformationGradient:
 
     @staticmethod
     def rotate(F: np.ndarray, R: np.ndarray) -> Any:
-        return np.matmul(np.matmul(R, F), R.T)
+        F = np.atleast_3d(F)
+        R = np.atleast_3d(R)
+        return np.einsum("nij,njk,nlk->nil", R, F, R)
 
 
 class DeformationGradientGenerator(DeformationGradient):
@@ -172,5 +165,4 @@ class DeformationGradientGenerator(DeformationGradient):
         fb = self.rotate(fb, r3)
 
         # Compute deformation gradient
-        F = np.matmul(np.matmul(fb, fu), fs)
-        return F
+        return np.matmul(np.matmul(fb, fu), fs)
