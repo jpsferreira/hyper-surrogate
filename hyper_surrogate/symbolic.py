@@ -24,6 +24,17 @@ class SymbolicHandler:
         """
         return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"C_{i+1}{j+1}"))
 
+    # multuply c_tensor by itself
+    def _c_tensor_squared(self) -> sym.Matrix:
+        """
+        Compute the square of the c_tensor.
+
+        Returns:
+            sym.Matrix: The square of the c_tensor.
+        """
+        # matrix product
+        return self.c_tensor.multiply(self.c_tensor)
+
     @property
     def invariant1(self) -> Any:
         """
@@ -35,6 +46,17 @@ class SymbolicHandler:
         I3 = self.invariant3  # Determinant
         trace = self.c_tensor.trace()  # Trace
         return trace * (I3 ** (-sym.Rational(1, 3)))
+
+    @property
+    def invariant2(self) -> Any:
+        """
+        Compute the second invariant of the c_tensor.
+
+        Returns:
+            sym.Expr: The second invariant of the c_tensor.
+        """
+        c_squared = self._c_tensor_squared()
+        return sym.Rational(1, 2) * (self.c_tensor.multiply(self.c_tensor).trace() - c_squared.trace())
 
     @property
     def invariant3(self) -> Any:

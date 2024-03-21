@@ -23,7 +23,8 @@ def handler():
 
 @pytest.fixture
 def sef():
-    return (SymbolicHandler().invariant1 - 3) * sym.Symbol("C10")
+    symbolic_handler = SymbolicHandler()
+    return (symbolic_handler.invariant1 - 3) * sym.Symbol("C10") + (symbolic_handler.invariant2 - 3) * sym.Symbol("C01")
 
 
 # kinematics testing

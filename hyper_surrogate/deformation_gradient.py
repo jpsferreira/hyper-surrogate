@@ -18,7 +18,6 @@ class DeformationGradient:
 
         Args:
             stretch: A 1D array representing the stretch factor.
-
         Returns:
             The deformation gradient tensor as a 3D array.
         """
@@ -58,6 +57,7 @@ class DeformationGradient:
     def biaxial(stretch1: np.ndarray, stretch2: np.ndarray) -> np.ndarray:
         """
         Calculate the deformation gradient tensor for biaxial deformation.
+        latex equation:
 
         Args:
             stretch1: A 1D array representing the first stretch factor.
