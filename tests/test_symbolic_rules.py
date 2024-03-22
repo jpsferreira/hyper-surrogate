@@ -74,7 +74,7 @@ def test_symbolic_subs_in_c(handler):
 
 def test_symbolic_subs_in_pk2(handler, pk2, right_cauchys, sef_args):
     # right_cauchys # (N, 3, 3)
-    # for each c_tensor in c, substitute the pk2 tensor with c values and material parameters values.
+    # for each c_tensor in pk2, substitute the pk2 tensor with c values and material parameters values.
     assert all(
         isinstance(subs, sym.Matrix)
         and subs.shape == (3, 3)
@@ -85,7 +85,7 @@ def test_symbolic_subs_in_pk2(handler, pk2, right_cauchys, sef_args):
 
 def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
     # right_cauchys # (N, 3, 3)
-    # for each c_tensor in c, substitute the cmat tensor with c values and material parameters values.
+    # for each c_tensor in cmat, substitute the cmat tensor with c values and material parameters values.
     assert all(
         isinstance(subs, sym.ImmutableDenseNDimArray)
         and subs.shape == (3, 3, 3, 3)

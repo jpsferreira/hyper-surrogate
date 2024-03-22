@@ -97,7 +97,7 @@ class SymbolicHandler:
             ]
         )
 
-    def substitute(self, symbolic_tensor: sym.Expr, numerical_c_tensor: np.ndarray, *args: dict) -> Any:
+    def substitute(self, symbolic_tensor: sym.MutableDenseMatrix, numerical_c_tensor: np.ndarray, *args: dict) -> Any:
         """
         Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
 
@@ -121,7 +121,9 @@ class SymbolicHandler:
         substitutions.update(*args)
         return symbolic_tensor.subs(substitutions)
 
-    def substitute_iterator(self, symbolic_tensor: sym.Expr, numerical_c_tensors: np.ndarray, *args: dict) -> Any:
+    def substitute_iterator(
+        self, symbolic_tensor: sym.MutableDenseMatrix, numerical_c_tensors: np.ndarray, *args: dict
+    ) -> Any:
         """
         Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
 
