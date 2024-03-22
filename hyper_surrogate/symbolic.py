@@ -25,7 +25,7 @@ class SymbolicHandler:
         return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"C_{i+1}{j+1}"))
 
     # multuply c_tensor by itself
-    def _c_tensor_squared(self) -> sym.Matrix:
+    def _c_tensor_squared(self) -> Any:
         """
         Compute the square of the c_tensor.
 
@@ -68,7 +68,7 @@ class SymbolicHandler:
         """
         return self.c_tensor.det()
 
-    def pk2_tensor(self, sef: sym.Expr) -> sym.MutableDenseNDimArray:
+    def pk2_tensor(self, sef: sym.Expr) -> sym.Matrix:
         """
         Compute the pk2 tensor.
 
@@ -78,9 +78,9 @@ class SymbolicHandler:
         Returns:
             sym.Matrix: The pk2 tensor.
         """
-        return sym.MutableDenseNDimArray([[sym.diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
+        return sym.Matrix([[sym.diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
 
-    def cmat_tensor(self, pk2: sym.Matrix) -> sym.MutableDenseNDimArray:
+    def cmat_tensor(self, pk2: sym.Matrix) -> sym.ImmutableDenseNDimArray:
         """
         Compute the cmat tensor.
 
@@ -90,27 +90,51 @@ class SymbolicHandler:
         Returns:
             sym.MutableDenseNDimArray: The cmat tensor.
         """
-        return sym.MutableDenseNDimArray(
+        return sym.ImmutableDenseNDimArray(
             [
                 [[[sym.diff(pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
                 for i in range(3)
             ]
         )
 
-    def substitute(self, symbolic_tensor: sym.Expr, numerical_c_tensor: np.ndarray) -> Any:
+    def substitute(self, symbolic_tensor: sym.Expr, numerical_c_tensor: np.ndarray, *args: dict) -> Any:
         """
         Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
 
         Args:
             symbolic_tensor (sym.Matrix): A symbolic tensor to substitute numerical values into.
             numerical_matrix (np.ndarray): A 3x3 numerical matrix to substitute into c_tensor.
+            args (dict): Additional substitution dictionaries.
 
         Returns:
-            sym.Matrix: The c_tensor with numerical values substituted.
+            sym.Matrix: The symbolic_tensor with numerical values substituted.
 
         Raises:
             ValueError: If numerical_tensor is not a 3x3 matrix.
         """
-        return symbolic_tensor.subs(
-            {self.c_tensor[i, j]: np.array(numerical_c_tensor)[i, j] for i in range(3) for j in range(3)}
-        )
+        if not isinstance(numerical_c_tensor, np.ndarray) or numerical_c_tensor.shape != (3, 3):
+            raise ValueError("c_tensor.shape")
+
+        # Start with substitutions for c_tensor elements
+        substitutions = {self.c_tensor[i, j]: numerical_c_tensor[i, j] for i in range(3) for j in range(3)}
+        # Merge additional substitution dictionaries from *args
+        substitutions.update(*args)
+        return symbolic_tensor.subs(substitutions)
+
+    def substitute_iterator(self, symbolic_tensor: sym.Expr, numerical_c_tensors: np.ndarray, *args: dict) -> Any:
+        """
+        Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
+
+        Args:
+            symbolic_tensor (sym.Matrix): A symbolic tensor to substitute numerical values into.
+            numerical_matrix (np.ndarray): A 3x3 numerical matrix to substitute into c_tensor.
+            args (dict): Additional substitution dictionaries.
+
+        Returns:
+            sym.Matrix: The symbolic_tensor with numerical values substituted.
+
+        Raises:
+            ValueError: If numerical_tensor is not a 3x3 matrix.
+        """
+        for numerical_c_tensor in numerical_c_tensors:
+            yield self.substitute(symbolic_tensor, numerical_c_tensor, *args)

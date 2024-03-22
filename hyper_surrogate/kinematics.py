@@ -68,41 +68,42 @@ class Kinematics:
         # and 'jk' are the indices for the second matrix (transposed to 'kj' for multiplication).
         return np.einsum("nij,nkj->nik", f, f)
 
-    def strain_tensor(self, f: np.ndarray) -> Any:
+    @staticmethod
+    def strain_tensor(f: np.ndarray) -> Any:
         """
         Compute the strain tensor.
 
         Args:
-            f (np.ndarray): The deformation gradient.
+            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
 
         Returns:
-            np.ndarray: The strain tensor.
+            np.ndarray: The strain tensors. batched with shape (N, 3, 3).
         """
-        return 0.5 * (f.T @ f - np.eye(3))
+        return 0.5 * (np.einsum("nji,njk->nik", f, f) - np.eye(3))
 
     def stretch_tensor(self, f: np.ndarray) -> Any:
         """
         Compute the stretch tensor.
 
         Args:
-            f (np.ndarray): The deformation gradient.
+            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
 
         Returns:
-            np.ndarray: The stretch tensor.
+            np.ndarray: The stretch tensor. batched with shape (N, 3, 3).
         """
-        return np.sqrt(self.right_cauchy_green(f))
+        return np.sqrt(np.einsum("nji,njk->nik", f, f))
 
-    def rotation_tensor(self, f: np.ndarray) -> np.ndarray:
+    def rotation_tensor(self, f: np.ndarray) -> Any:
         """
-        Compute the rotation tensor.
+        Compute the rotation tensors.
 
         Args:
-            f (np.ndarray): The deformation gradient.
+            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
 
         Returns:
-            np.ndarray: The rotation tensor.
+            np.ndarray: The rotation tensors. batched with shape (N, 3, 3).
         """
-        return f @ np.linalg.inv(self.stretch_tensor(f))
+        return np.einsum("nij,njk->nik", f, np.linalg.inv(f))
 
     def principal_stretches(self, f: np.ndarray) -> np.ndarray:
         """
