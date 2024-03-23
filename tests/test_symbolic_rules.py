@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pytest
 import sympy as sym
@@ -50,6 +52,13 @@ def cmat(handler, pk2) -> sym.ImmutableDenseNDimArray:
 # testing
 
 
+def test_c_symbols(handler):
+    # assert c_symbols
+    c_symbols = handler.c_symbols()
+    assert isinstance(c_symbols, list)
+    assert all(isinstance(c, sym.Symbol) for c in c_symbols)
+
+
 def test_symbolic_pk2_cmat(pk2, cmat):
     # derivative of sef in order to c_tensor
 
@@ -98,3 +107,29 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
         )
         for subs in handler.substitute_iterator(cmat, right_cauchys, sef_args)
     )
+
+
+def test_lambdify(handler, sef_args, right_cauchys, pk2):
+    c = right_cauchys[0]
+    C10, C01 = sym.symbols("C10 C01")
+    # pk2
+    pk2_func = handler.lambdify(pk2, *sef_args.keys())
+    pk2_value = handler.evaluate(pk2_func, c.flatten(), 1, 1)
+    assert isinstance(pk2_value, np.ndarray)
+    assert pk2_value.shape == (3, 3)
+    assert all(isinstance(pk2_value[i, j], float) for i in range(3) for j in range(3))
+
+
+def test_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
+    logging.info(right_cauchys.shape)
+    # pk2 function
+    pk2_func = handler.lambdify(pk2, *sef_args.keys())
+    pk2_values = list(handler.evaluate_iterator(pk2_func, right_cauchys, 1, 1))
+    assert isinstance(pk2_values, list)
+    assert all(isinstance(pk2_value, np.ndarray) for pk2_value in pk2_values)
+    assert all(pk2_value.shape == (3, 3) for pk2_value in pk2_values)
+    assert all(isinstance(pk2_value[i, j], float) for pk2_value in pk2_values for i in range(3) for j in range(3))
+
+    # for evals in handler.evaluate_iterator(pk2_func, right_cauchys, 1, 1):
+    #     logging.info(evals)
+    # logging.info(list(handler.evaluate_iterator(pk2_func, right_cauchys, 1, 1)))

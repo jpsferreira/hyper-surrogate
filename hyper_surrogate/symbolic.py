@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterable
 
 import numpy as np
 import sympy as sym
@@ -14,6 +14,15 @@ class SymbolicHandler:
 
     def __init__(self) -> None:
         self.c_tensor = self._c_tensor()
+
+    def c_symbols(self) -> Any:
+        """
+        Return the c_tensor flattened symbols.
+
+        Returns:
+            list: A list of c_tensor symbols.
+        """
+        return [self.c_tensor[i, j] for i in range(3) for j in range(3)]
 
     def _c_tensor(self) -> sym.Matrix:
         """
@@ -97,7 +106,12 @@ class SymbolicHandler:
             ]
         )
 
-    def substitute(self, symbolic_tensor: sym.MutableDenseMatrix, numerical_c_tensor: np.ndarray, *args: dict) -> Any:
+    def substitute(
+        self,
+        symbolic_tensor: sym.MutableDenseMatrix,
+        numerical_c_tensor: np.ndarray,
+        *args: dict,
+    ) -> Any:
         """
         Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
 
@@ -122,7 +136,10 @@ class SymbolicHandler:
         return symbolic_tensor.subs(substitutions)
 
     def substitute_iterator(
-        self, symbolic_tensor: sym.MutableDenseMatrix, numerical_c_tensors: np.ndarray, *args: dict
+        self,
+        symbolic_tensor: sym.MutableDenseMatrix,
+        numerical_c_tensors: np.ndarray,
+        *args: dict,
     ) -> Any:
         """
         Automatically substitute numerical values from a given 3x3 numerical matrix into c_tensor.
@@ -140,3 +157,43 @@ class SymbolicHandler:
         """
         for numerical_c_tensor in numerical_c_tensors:
             yield self.substitute(symbolic_tensor, numerical_c_tensor, *args)
+
+    def lambdify(self, symbolic_tensor: sym.Matrix, *args: Iterable[Any]) -> Any:
+        """
+        Create a lambdified function from a symbolic tensor that can be used for numerical evaluation.
+
+        Args:
+            tensor (sym.Expr or sym.Matrix): The symbolic tensor to be lambdified.
+            args (dict): Additional substitution lists of symbols.
+        Returns:
+            function: A function that can be used to numerically evaluate the tensor with specific values.
+        """
+
+        return sym.lambdify((self.c_symbols(), *args), symbolic_tensor, modules="numpy")
+
+    def evaluate(self, lambdified_tensor: Any, *args: Any) -> Any:
+        """
+        Evaluate a lambdified tensor with specific values.
+
+        Args:
+            lambdified_tensor (function): A lambdified tensor function.
+            args (dict): Additional substitution lists of symbols.
+
+        Returns:
+            Any: The evaluated tensor.
+        """
+        return lambdified_tensor(*args)
+
+    def evaluate_iterator(self, lambdified_tensor: Any, numerical_c_tensors: np.ndarray, *args: Any) -> Any:
+        """
+        Evaluate a lambdified tensor with specific values.
+
+        Args:
+            lambdified_tensor (function): A lambdified tensor function.
+            args (dict): Additional substitution lists of symbols.
+
+        Returns:
+            Any: The evaluated tensor.
+        """
+        for numerical_c_tensor in numerical_c_tensors:
+            yield self.evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
