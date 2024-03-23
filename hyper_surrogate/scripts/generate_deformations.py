@@ -46,20 +46,17 @@ if __name__ == "__main__":
     start_time = time.time()
     pk2_iterator = h.substitute_iterator(pk2, c, sef_params)
     # add each entrue of pk2_iterator to np array
-    a = np.array([next(pk2_iterator) for _ in range(args.batch_size)])
+    a = np.array(list(pk2_iterator))
     end_time = time.time()
     print(f"Generated {args.batch_size} pk2 tensors in {end_time - start_time:.5f} seconds.")
     # average per entry
-    # print(f"Average time per entry: {(end_time - start_time) / args.batch_size:.5f} seconds.")
+    print(f"Average time per entry: {(end_time - start_time) / args.batch_size:.5f} seconds.")
 
     # evaluate lambdify
     pk2_func = h.lambdify(pk2, *sef_params.keys())
     start_time = time.time()
     pk2_func_iterator = h.evaluate_iterator(pk2_func, c, 1, 1)
-    b = np.array([next(pk2_func_iterator) for _ in range(args.batch_size)])
+    b = np.array(list(pk2_func_iterator))
     end_time = time.time()
     print(f"Generated {args.batch_size} pk2 lambdified tensors in {end_time - start_time:.5f} seconds.")
-
-    print(a)
-    print("#########")
-    print(b)
+    print(f"Average time per entry (ms): {(end_time - start_time)*1000 / args.batch_size:.5f} ms.")
