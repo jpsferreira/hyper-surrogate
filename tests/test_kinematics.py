@@ -4,7 +4,7 @@ import pytest
 from hyper_surrogate.deformation_gradient import DeformationGradientGenerator as FGen
 from hyper_surrogate.kinematics import Kinematics
 
-SIZE = 1
+SIZE = 2
 
 
 @pytest.fixture

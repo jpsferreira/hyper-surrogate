@@ -110,8 +110,7 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
 def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     # pk2 function
     pk2_func = handler.lambdify(pk2, *sef_args.keys())
-    pk2_values = np.array(handler.evaluate_iterator(pk2_func, right_cauchys, *sef_args.values()) for _ in range(SIZE))
-    assert isinstance(pk2_values, np.array)
+    pk2_values = np.array(list(handler.evaluate_iterator(pk2_func, right_cauchys, *sef_args.values())))
     assert all(isinstance(pk2_value, np.ndarray) for pk2_value in pk2_values)
     assert all(pk2_value.shape == (3, 3) for pk2_value in pk2_values)
     assert all(isinstance(pk2_value[i, j], float) for pk2_value in pk2_values for i in range(3) for j in range(3))
