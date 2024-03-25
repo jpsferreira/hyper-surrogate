@@ -43,7 +43,28 @@ def test_strain_tensor(def_gradients, K):
     assert np.allclose(strain_tensors, 0.5 * (np.array([f.T @ f for f in def_gradients]) - np.eye(3)))
 
 
-# def test_stretch_tensor(def_gradients, K):
-#     stretch_tensors = K.stretch_tensor(def_gradients)
-#     logging.info(stretch_tensors)
-# assert np.allclose(stretch_tensors, np.sqrt(np.array([f.T @ f for f in def_gradients])))
+def test_jacobian(def_gradients, K):
+    jacobians = K.jacobian(def_gradients)
+    assert np.allclose(jacobians, np.array([np.linalg.det(f) for f in def_gradients]))
+
+
+def test_pushforward(def_gradients, K):
+    # test pushforward operation on unit tensors  (F * I * F^T)
+    tensor_3x3 = np.array([np.eye(3) for _ in range(SIZE)])
+    forwards = K.pushforward(def_gradients, tensor_3x3)
+    assert np.allclose(forwards, np.array([f @ np.eye(3) @ f.T for f in def_gradients]))
+
+
+def test_rotation_tensor(def_gradients, K):
+    rotation_tensors = K.rotation_tensor(def_gradients)
+    assert np.allclose(rotation_tensors, np.array([f @ np.linalg.inv(f) for f in def_gradients]))
+
+
+def test_principal_stretches(def_gradients, K):
+    principal_stretches = K.principal_stretches(def_gradients)
+    assert np.allclose(principal_stretches, np.array([np.sqrt(np.linalg.eigvals(f.T @ f)) for f in def_gradients]))
+
+
+def test_principal_directions(def_gradients, K):
+    principal_directions = K.principal_directions(def_gradients)
+    assert np.allclose(principal_directions, np.array([np.linalg.eig(f.T @ f)[1] for f in def_gradients]))

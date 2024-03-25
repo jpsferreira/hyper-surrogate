@@ -94,10 +94,10 @@ class Kinematics:
         return np.sqrt(np.einsum("nji,njk->nik", f, f))
 
     @staticmethod
-    def forward(f: np.ndarray, tensor2D: np.ndarray) -> Any:
+    def pushforward(f: np.ndarray, tensor2D: np.ndarray) -> Any:
         """
         Forward tensor configuration.
-        F*tensor2D*F^T
+        F*tensor2D*F^T. This is the forward transformation of a 2D tensor.
 
         Args:
             f (np.ndarray): deformation gradient # (N, 3, 3)
@@ -106,7 +106,7 @@ class Kinematics:
         Returns:
             np.ndarray: The transformed tensor.
         """
-        return np.einsum("...ij,...jk,...kl->...il", f, tensor2D, f)
+        return np.einsum("nik,njl,nkl->nij", f, f, tensor2D)
 
     def rotation_tensor(self, f: np.ndarray) -> Any:
         """

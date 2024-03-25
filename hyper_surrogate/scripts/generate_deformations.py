@@ -51,7 +51,6 @@ if __name__ == "__main__":
     print(f"Generated {args.batch_size} pk2 tensors in {end_time - start_time:.5f} seconds.")
     # average per entry
     print(f"Average time per entry: {(end_time - start_time) / args.batch_size:.5f} seconds.")
-
     # evaluate lambdify
     pk2_func = h.lambdify(pk2, *sef_params.keys())
     start_time = time.time()
