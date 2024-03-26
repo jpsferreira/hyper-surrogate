@@ -14,7 +14,6 @@ packages = [
 python = ">=3.10,<4.0"
 numpy = "^1.26.4"
 sympy = "^1.12"
-seaborn = "^0.13.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
