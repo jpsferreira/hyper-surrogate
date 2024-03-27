@@ -38,11 +38,6 @@ def test_left_cauchys(def_gradients, K):
     assert np.allclose(left_cauchys, np.array([np.matmul(f, f.T) for f in def_gradients]))
 
 
-def test_strain_tensor(def_gradients, K):
-    strain_tensors = K.strain_tensor(def_gradients)
-    assert np.allclose(strain_tensors, 0.5 * (np.array([f.T @ f for f in def_gradients]) - np.eye(3)))
-
-
 def test_jacobian(def_gradients, K):
     jacobians = K.jacobian(def_gradients)
     assert np.allclose(jacobians, np.array([np.linalg.det(f) for f in def_gradients]))

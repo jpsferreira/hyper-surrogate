@@ -37,18 +37,14 @@ class NeoHooke(Material):
 
     @property
     def sef(self) -> Any:
-        return (self.invariant1 - 3) * sym.Symbol("C10")  # + (self.invariant2 - 3) * sym.Symbol("C01")
+        return (self.invariant1 - 3) * sym.Symbol("C10")
 
-    # @property
-    # def pk2_symb(self) -> Any:
-    #     return self.pk2_tensor(self.sef)
 
-    # @property
-    # def cmat_symb(self) -> Any:
-    #     return self.cmat_tensor(self.pk2_symb)
+class MooneyRivlin(Material):
+    def __init__(self) -> None:
+        params = ["C10", "C01"]
+        super().__init__(params)
 
-    # def pk2(self) -> Any:
-    #     return self.lambdify(self.pk2_symb, *self.parameters)
-
-    # def cmat(self) -> Any:
-    #     return self.lambdify(self.cmat_symb, *self.parameters)
+    @property
+    def sef(self) -> Any:
+        return (self.invariant1 - 3) * sym.Symbol("C10") + (self.invariant2 - 3) * sym.Symbol("C01")

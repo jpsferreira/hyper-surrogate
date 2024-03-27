@@ -32,6 +32,7 @@ class Kinematics:
         """
         Compute the right Cauchy-Green deformation tensor for a batch of deformation gradients
         using a more efficient vectorized approach.
+        $$C = F^T F$$
 
         Args:
             f (np.ndarray): The deformation gradient tensor with shape (N, 3, 3),
@@ -69,29 +70,17 @@ class Kinematics:
         return np.einsum("nij,nkj->nik", f, f)
 
     @staticmethod
-    def strain_tensor(f: np.ndarray) -> Any:
+    def rotation_tensor(f: np.ndarray) -> Any:
         """
-        Compute the strain tensor.
+        Compute the rotation tensors.
 
         Args:
             f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
 
         Returns:
-            np.ndarray: The strain tensors. batched with shape (N, 3, 3).
+            np.ndarray: The rotation tensors. batched with shape (N, 3, 3).
         """
-        return 0.5 * (np.einsum("nji,njk->nik", f, f) - np.eye(3))
-
-    def stretch_tensor(self, f: np.ndarray) -> Any:
-        """
-        Compute the stretch tensor.
-
-        Args:
-            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
-
-        Returns:
-            np.ndarray: The stretch tensor. batched with shape (N, 3, 3).
-        """
-        return np.sqrt(np.einsum("nji,njk->nik", f, f))
+        return np.einsum("nij,njk->nik", f, np.linalg.inv(f))
 
     @staticmethod
     def pushforward(f: np.ndarray, tensor2D: np.ndarray) -> Any:
@@ -107,18 +96,6 @@ class Kinematics:
             np.ndarray: The transformed tensor.
         """
         return np.einsum("nik,njl,nkl->nij", f, f, tensor2D)
-
-    def rotation_tensor(self, f: np.ndarray) -> Any:
-        """
-        Compute the rotation tensors.
-
-        Args:
-            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
-
-        Returns:
-            np.ndarray: The rotation tensors. batched with shape (N, 3, 3).
-        """
-        return np.einsum("nij,njk->nik", f, np.linalg.inv(f))
 
     def principal_stretches(self, f: np.ndarray) -> np.ndarray:
         """
