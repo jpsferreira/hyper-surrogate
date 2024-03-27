@@ -6,7 +6,7 @@ from hyper_surrogate.symbolic import SymbolicHandler
 
 
 class Material(SymbolicHandler):
-    def __init__(self, parameters: list | None = None) -> None:
+    def __init__(self, parameters: list) -> None:
         super().__init__()
         self.parameters = parameters
 
@@ -33,7 +33,7 @@ class Material(SymbolicHandler):
 class NeoHooke(Material):
     def __init__(self) -> None:
         params = ["C10"]
-        super().__init__(parameters=params)
+        super().__init__(params)
 
     @property
     def sef(self) -> Any:
