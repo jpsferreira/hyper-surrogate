@@ -37,12 +37,12 @@ if __name__ == "__main__":
     c = K.right_cauchy_green(f)
 
     nh = NeoHooke()
-    print(nh.sef)
     # evaluate lambdify
     start_time = time.time()
     pk2_generator = nh.pk2()
-    pk2_func_iterator = nh.evaluate_iterator(pk2_generator, c, 1, 1)
+    pk2_func_iterator = nh.evaluate_iterator(pk2_generator, c, 1)
     b = np.array(list(pk2_func_iterator))
     end_time = time.time()
+    print(b)
     print(f"Generated {args.batch_size} pk2 lambdified tensors in {end_time - start_time:.5f} seconds.")
     print(f"Average time per entry (ms): {(end_time - start_time)*1000 / args.batch_size:.5f} ms.")
