@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterable
 
 import sympy as sym
 
@@ -6,7 +6,7 @@ from hyper_surrogate.symbolic import SymbolicHandler
 
 
 class Material(SymbolicHandler):
-    def __init__(self, parameters: list) -> None:
+    def __init__(self, parameters: Iterable[Any]) -> None:
         super().__init__()
         self.parameters = parameters
 

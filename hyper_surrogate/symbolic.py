@@ -171,7 +171,7 @@ class SymbolicHandler:
 
         return sym.lambdify((self.c_symbols(), *args), symbolic_tensor, modules="numpy")
 
-    def evaluate(self, lambdified_tensor: Any, *args: Any) -> Any:
+    def _evaluate(self, lambdified_tensor: Any, *args: Any) -> Any:
         """
         Evaluate a lambdified tensor with specific values.
 
@@ -196,4 +196,4 @@ class SymbolicHandler:
             Any: The evaluated tensor.
         """
         for numerical_c_tensor in numerical_c_tensors:
-            yield self.evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
+            yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
