@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 import sympy as sym
 
-from hyper_surrogate.materials import Material
+from hyper_surrogate.materials import Material, MooneyRivlin, NeoHooke
 
 
 @pytest.fixture
 def material():
-    return Material([])
+    return Material(["param1", "param2"])
 
 
 def test_material_dummy_sef(material):
@@ -25,3 +25,15 @@ def test_pk2_symbol(material):
 def test_cmat_symbol(material):
     assert material.cmat_symb == material.cmat_tensor(material.pk2_symb)
     assert material.cmat_symb == sym.ImmutableDenseNDimArray(np.zeros((3, 3, 3, 3)))
+
+
+def test_neohooke_sef():
+    neohooke = NeoHooke()
+    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10")
+
+
+def test_mooneyrivlin_sef():
+    mooneyrivlin = MooneyRivlin()
+    assert mooneyrivlin.sef == (mooneyrivlin.invariant1 - 3) * sym.Symbol("C10") + (
+        mooneyrivlin.invariant2 - 3
+    ) * sym.Symbol("C01")
