@@ -68,6 +68,12 @@ def test_symbolic_pk2_cmat(pk2, cmat):
     assert cmat.shape == (3, 3, 3, 3)
 
 
+def test_substitute_with_wrong_shape(handler):
+    # subs c_tensor with c values
+    with pytest.raises(ValueError):
+        handler.substitute(handler.c_tensor, np.ones((3, 4)))
+
+
 def test_symbolic_subs_in_c(handler):
     # substitute the c_tensor with a 3x3 matrix of ones
     c_tensor = handler.c_tensor
