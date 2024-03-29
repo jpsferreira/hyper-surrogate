@@ -45,9 +45,8 @@ jobs:
         run: poetry run mkdocs build --clean
 
       - name: Upload Pages artifact for deployment
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: pages
           path: site
 
   deploy-docs:
