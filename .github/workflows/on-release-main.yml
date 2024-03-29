@@ -28,16 +28,42 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
           RELEASE_VERSION: ${{ steps.vars.outputs.tag }}
 
-  deploy-docs:
+  build-and-upload-docs:
     needs: publish
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
       - name: Set up the environment
         uses: ./.github/actions/setup-poetry-env
 
-      - name: Deploy documentation
-        run: poetry run mkdocs gh-deploy --force
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build documentation
+        run: poetry run mkdocs build --clean
+
+      - name: Upload Pages artifact for deployment
+        uses: actions/upload-artifact@v3
+        with:
+          name: pages
+          path: site
+
+  deploy-docs:
+    needs: build-and-upload-docs
+    permissions:
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
