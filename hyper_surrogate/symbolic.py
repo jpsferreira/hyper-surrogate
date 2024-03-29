@@ -117,7 +117,7 @@ class SymbolicHandler:
 
         Args:
             symbolic_tensor (sym.Matrix): A symbolic tensor to substitute numerical values into.
-            numerical_matrix (np.ndarray): A 3x3 numerical matrix to substitute into c_tensor.
+            numerical_c_tensor (np.ndarray): A 3x3 numerical matrix to substitute into c_tensor.
             args (dict): Additional substitution dictionaries.
 
         Returns:
@@ -146,7 +146,7 @@ class SymbolicHandler:
 
         Args:
             symbolic_tensor (sym.Matrix): A symbolic tensor to substitute numerical values into.
-            numerical_matrix (np.ndarray): A 3x3 numerical matrix to substitute into c_tensor.
+            numerical_c_tensors (np.ndarray): N 3x3 numerical matrices to substitute into c_tensor.
             args (dict): Additional substitution dictionaries.
 
         Returns:
@@ -163,7 +163,7 @@ class SymbolicHandler:
         Create a lambdified function from a symbolic tensor that can be used for numerical evaluation.
 
         Args:
-            tensor (sym.Expr or sym.Matrix): The symbolic tensor to be lambdified.
+            symbolic_tensor (sym.Expr or sym.Matrix): The symbolic tensor to be lambdified.
             args (dict): Additional substitution lists of symbols.
         Returns:
             function: A function that can be used to numerically evaluate the tensor with specific values.

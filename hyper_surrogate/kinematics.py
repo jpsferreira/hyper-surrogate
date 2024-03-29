@@ -90,7 +90,7 @@ class Kinematics:
 
         Args:
             f (np.ndarray): deformation gradient # (N, 3, 3)
-            2d_tensor (np.ndarray): The 2D tensor to be mapped # (N, 3, 3)
+            tensor2D (np.ndarray): The 2D tensor to be mapped # (N, 3, 3)
 
         Returns:
             np.ndarray: The transformed tensor.
