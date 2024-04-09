@@ -13,11 +13,14 @@ import numpy as np
 from hyper_surrogate.deformation_gradient import DeformationGradientGenerator
 from hyper_surrogate.kinematics import Kinematics as K
 from hyper_surrogate.materials import MooneyRivlin, NeoHooke
+from hyper_surrogate.reporter import Reporter
 
 # set log level
 logging.basicConfig(level=logging.INFO)
 # set numpy print options
 np.set_printoptions(precision=4, suppress=True)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output_path", "-o", type=Path, help="Output file", required=True)
@@ -70,6 +73,9 @@ if __name__ == "__main__":
     results["f"] = f
     logging.info(f"Generated {args.batch_size} deformation gradients.")
     c = K.right_cauchy_green(f)
+
+    reporter = Reporter(c, Path("output.pdf"))
+    reporter.create_report()
 
     if "pk2" in args.tensors:
         pk2_func_iterator = material.evaluate_iterator(material.pk2(), c, args.batch_size)
