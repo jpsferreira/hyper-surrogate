@@ -17,6 +17,7 @@ sympy = "^1.12"
 matplotlib = "^3.8.3"
 seaborn = "^0.13.2"
 tqdm = "^4.66.2"
+pandas = "^2.2.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"

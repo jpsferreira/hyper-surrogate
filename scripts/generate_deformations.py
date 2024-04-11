@@ -74,7 +74,8 @@ if __name__ == "__main__":
     logging.info(f"Generated {args.batch_size} deformation gradients.")
     c = K.right_cauchy_green(f)
 
-    reporter = Reporter(c, Path("output.pdf"))
+    # report pdf to output_path name
+    reporter = Reporter(c, args.output_path.parent)
     reporter.create_report()
 
     if "pk2" in args.tensors:
