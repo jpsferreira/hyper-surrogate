@@ -197,3 +197,67 @@ class SymbolicHandler:
         """
         for numerical_c_tensor in numerical_c_tensors:
             yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
+
+    @staticmethod
+    def reduce_2nd_order(tensor: sym.Matrix) -> Any:
+        """
+        Convert a 3x3 matrix to 6x1 matrix using Voigt notation
+
+        Args:
+            tensor (sp.Matrix): A 3x3 symmetric matrix.
+
+        Returns:
+            sp.Matrix: A 6x1 matrix.
+        """
+        # Validate the input tensor dimensions
+        if tensor.shape != (3, 3):
+            raise ValueError("Wrong.shape.")
+        # Voigt notation conversion: xx, yy, zz, xy, xz, yz
+        voigt_vector = sym.Matrix(
+            [
+                tensor[0, 0],  # xx
+                tensor[1, 1],  # yy
+                tensor[2, 2],  # zz
+                tensor[0, 1],  # xy
+                tensor[0, 2],  # xz
+                tensor[1, 2],  # yz
+            ]
+        )
+        return voigt_vector
+
+    @staticmethod
+    def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> Any:
+        """
+        Convert a 3x3x3x3 matrix to 6x6 matrix using Voigt notation
+
+        Args:
+            tensor (sym.MutableDenseNDimArray): A 3x3x3x3 matrix.
+
+        Returns:
+            sym.Matrix: A 6x6 matrix.
+        """
+        # Validate the input tensor dimensions
+        if tensor.shape != (3, 3, 3, 3):
+            raise ValueError("Wrong.shape.")
+
+        # Voigt notation indices for 3D case
+        voigt_indices = {
+            (0, 0): 0,
+            (1, 1): 1,
+            (2, 2): 2,
+            (1, 2): 3,
+            (2, 1): 3,
+            (0, 2): 4,
+            (2, 0): 4,
+            (0, 1): 5,
+            (1, 0): 5,
+        }
+
+        # Initialize a 6x6 matrix for the tangent stiffness matrix in Voigt notation
+        voigt_matrix = sym.Matrix.zeros(6, 6)
+
+        # Fill the Voigt matrix
+        for (i, j), ii in voigt_indices.items():
+            for (kk, ll), jj in voigt_indices.items():
+                voigt_matrix[ii, jj] = tensor[i, j, kk, ll]
+        return voigt_matrix

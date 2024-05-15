@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import pytest
 import sympy as sym
@@ -129,3 +131,14 @@ def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
     assert cmat_values.shape == (SIZE, 3, 3, 3, 3)
     assert all(isinstance(cmat_value, np.ndarray) for cmat_value in cmat_values)
     assert all(cmat_value.shape == (3, 3, 3, 3) for cmat_value in cmat_values)
+
+
+def test_reduce_2nd_order(handler, pk2):
+    logging.info(f"pk2.shape: {pk2.shape}")
+    # reduce order of pk2. assert shape
+    assert handler.reduce_2nd_order(pk2).shape == (6, 1)
+
+
+def test_reduce_4th_order(handler, cmat):
+    # reduce order of cmat. assert shape
+    assert handler.reduce_4th_order(cmat).shape == (6, 6)
