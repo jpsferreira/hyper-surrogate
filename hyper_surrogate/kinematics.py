@@ -26,6 +26,7 @@ class Kinematics:
             np.ndarray: The Jacobian of the deformation gradient.
         """
         return np.linalg.det(f)
+
     @staticmethod
     def invariant1(F: np.ndarray) -> Any:
         """
@@ -52,7 +53,7 @@ class Kinematics:
             The second invariant.
         """
         # use einsum to calculate the second invariant: 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
-        return 0.5 * (np.einsum("nii->n", F)**2 - np.einsum("nij,nji->n", F, F))
+        return 0.5 * (np.einsum("nii->n", F) ** 2 - np.einsum("nij,nji->n", F, F))
 
     @staticmethod
     def invariant3(F: np.ndarray) -> Any:

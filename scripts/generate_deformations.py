@@ -58,14 +58,8 @@ if __name__ == "__main__":
     # set material model
     if args.material == "nh":
         material = NeoHooke()
-        # assert (
-        #     len(args.model_params) == 1
-        # ), f"Neo-Hookean material model requires one parameter. Got: {args.model_params}"
     elif args.material == "mr":
         material = MooneyRivlin()
-        # assert (
-        #     len(args.model_params) == 2
-        # ), f"Mooney-Rivlin material model requires two parameters (c1, c2). Got: {args.model_params}"
 
     results = {"f": None, "pk2": None, "cmat": None}
     # numeric generator
@@ -73,6 +67,10 @@ if __name__ == "__main__":
     results["f"] = f
     logging.info(f"Generated {args.batch_size} deformation gradients.")
     c = K.right_cauchy_green(f)
+    # first invariant
+    I1 = K.invariant2(c)
+    print(c)
+    print(I1)
 
     # report pdf to output_path name
     reporter = Reporter(c, args.output_path.parent)

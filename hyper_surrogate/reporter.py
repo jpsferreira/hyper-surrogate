@@ -66,7 +66,6 @@ class Reporter:
     def visualize_determinants(self) -> list[matplotlib.figure.Figure]:
         # Plot a histogram of the determinants of the 3x3 matrices
         determinants = np.linalg.det(self.tensor)
-        print(determinants)
         fig, ax = plt.subplots(1, 1, figsize=self.FIG_SIZE)
         sns.histplot(determinants.flatten(), kde=True, ax=ax)
         # plt.hist(determinants, alpha=0.75)

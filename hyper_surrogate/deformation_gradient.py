@@ -148,7 +148,6 @@ class DeformationGradient:
         """
         return F / np.linalg.det(F) ** (1.0 / 3.0)
 
-
     @staticmethod
     def to_radians(degree: float) -> float:
         """

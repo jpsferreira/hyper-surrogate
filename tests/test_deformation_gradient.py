@@ -110,7 +110,6 @@ class TestDeformationGradient:
         deformation_gradient_rescaled = deformation_generator.rescale(deformation_gradient)
         assert np.all(deformation_gradient_rescaled == deformation_gradient)
 
-
     def test_rotate(self, deformation_generator):
         deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
         R = np.array([[[1, 0, 0], [0, 0, 1], [0, -1, 0]], [[1, 0, 0], [0, 0, 1], [0, -1, 0]]])
