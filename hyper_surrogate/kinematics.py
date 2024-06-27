@@ -29,15 +29,16 @@ class Kinematics:
     @staticmethod
     def invariant1(F: np.ndarray) -> Any:
         """
-        Calculate the first invariant of the deformation gradient tensor.
+        Calculate the first invariant of each tensor in the batch.
 
         Args:
             F: 4D tensor of shape (N, 3, 3, 3).
 
         Returns:
-            The first invariant.
+            The first invariant of each tensor in the batch.
         """
-        return np.trace(F)
+        # einsum
+        return np.einsum("nii->n", F)
 
     @staticmethod
     def invariant2(F: np.ndarray) -> Any:
@@ -50,7 +51,8 @@ class Kinematics:
         Returns:
             The second invariant.
         """
-        return 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
+        # use einsum to calculate the second invariant: 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
+        return 0.5 * (np.einsum("nii->n", F)**2 - np.einsum("nij,nji->n", F, F))
 
     @staticmethod
     def invariant3(F: np.ndarray) -> Any:
