@@ -1,7 +1,7 @@
 import sympy as sym
 
 from hyper_surrogate.materials import NeoHooke
-
+from hyper_surrogate.kinematics import Kinematics
 material = NeoHooke()
 pk2 = material.pk2_symb
 cmat = material.cmat_symb
@@ -11,15 +11,29 @@ cmat = material.cmat_symb
 f = sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i+1},{j+1})"))
 # calculate the right Cauchy-Green tensor from the deformation gradient tensor
 c = f.T * f
+# We can substitute these values into the tensor expressions to get the expressions in terms of the deformation gradient tensor components.
 # C_11 is c[0,0], C_22 is c[1,1], C_33 is c[2,2], C_12 is c[0,1], C_13 is c[0,2], C_23 is c[1,2]
-# We can substitute these values into the pk2 and cmat expressions to get the expressions in terms of the deformation gradient tensor components.
 sub_exp = {material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
-pk2 = pk2.subs(sub_exp)
-cmat = cmat.subs(sub_exp)
-# We can convert these expressions to Fortran code using sympy's fcode function.
-pk2_code = sym.fcode(pk2, standard=90, source_format="free")
-cmat_code = sym.fcode(cmat, standard=90, source_format="free")
 
+sigma = NeoHooke.pushforward_2nd_order(pk2, f)
+sigma = NeoHooke.reduce_2nd_order(sigma)
+smat = NeoHooke.pushforward_4th_order(cmat, f)
+smat = NeoHooke.reduce_4th_order(smat)
+
+sigma = sigma.subs(sub_exp)
+smat = smat.subs(sub_exp)
+
+print(sigma)
+# Extracting individual components to avoid using unsupported structures
+sigma_components = [sigma[i, j] for i in range(3) for j in range(3)]
+smat_components = [smat[i, j, k, l] for i in range(3) for j in range(3) for k in range(3) for l in range(3)]
+
+# Generate Fortran code for each component
+sigma_code = [sym.fcode(comp, standard=90, source_format="free", assign_to=f'STRESS({i+1})') for i, comp in enumerate(sigma_components)]
+smat_code = [sym.fcode(comp, standard=90, source_format="free", assign_to=f'DDSDDE({i//9+1},{i%9+1})') for i, comp in enumerate(smat_components)]
+
+pk2_code_str = "\n      ".join(pk2_code)
+cmat_code_str = "\n      ".join(cmat_code)
 
 umat_code = f"""
       SUBROUTINE UMAT(STRESS, STATEV, DDSDDE, SSE, SPD, SCD,
@@ -42,11 +56,12 @@ umat_code = f"""
       ! Initialize material properties
       C10 = PROPS(1)
 
-      ! Define the stress calculation from the pk2 symbolic expression
-STRESS={pk2_code}
+      ! Define the stress calculation from the pk2 symbolic expression. 
+      ! iterate over all components of the stress pk2_code
+      {pk2_code_str}
 
       ! Define the tangent matrix calculation from the cmat symbolic expression
-DDSDDE={cmat_code}
+      {cmat_code_str}
 
       RETURN
       END

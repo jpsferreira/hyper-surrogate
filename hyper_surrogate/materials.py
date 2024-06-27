@@ -49,6 +49,36 @@ class Material(SymbolicHandler):
     def cmat(self) -> Any:
         """Material stiffness tensor generator of numerical form."""
         return self.lambdify(self.cmat_symb, *self.parameters)
+    
+    @staticmethod
+    def pushforward_2nd_order(pk2: Any, f: Any) -> Any:
+        """
+        Push forward the second Piola-Kirchhoff stress tensor to the Cauchy stress tensor.
+
+        args:
+        pk2: Any - The second Piola-Kirchhoff stress tensor
+        f: Any - The deformation gradient tensor
+        
+        returns:
+        Any - The Cauchy stress tensor
+        """
+        return sym.simplify(f * pk2 * f.T)
+
+    @staticmethod
+    def pushforward_4th_order(cmat: Any, f: Any) -> Any:
+        """
+        Push forward the material stiffness tensor to the spatial stiffness tensor.
+
+        args:
+        cmat: Any - The material stiffness tensor (4th order tensor)
+        f: Any - The deformation gradient tensor
+        
+        returns:
+        Any - The spatial stiffness tensor (4th order tensor)
+        """
+        # matrix transformation of the 4th order tensor
+        return sym.simplify(f * f * cmat * f.T * f.T)
+    
 
 
 class NeoHooke(Material):
