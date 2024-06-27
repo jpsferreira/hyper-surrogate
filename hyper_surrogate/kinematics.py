@@ -20,12 +20,50 @@ class Kinematics:
         Compute the Jacobian of the deformation gradient.
 
         Args:
-            f (np.ndarray): The deformation gradient.
+            F: 4D tensor of shape (N, 3, 3, 3).
 
         Returns:
             np.ndarray: The Jacobian of the deformation gradient.
         """
         return np.linalg.det(f)
+    @staticmethod
+    def invariant1(F: np.ndarray) -> Any:
+        """
+        Calculate the first invariant of the deformation gradient tensor.
+
+        Args:
+            F: 4D tensor of shape (N, 3, 3, 3).
+
+        Returns:
+            The first invariant.
+        """
+        return np.trace(F)
+
+    @staticmethod
+    def invariant2(F: np.ndarray) -> Any:
+        """
+        Calculate the second invariant of the deformation gradient tensor.
+
+        Args:
+            F: 4D tensor of shape (N, 3, 3, 3).
+
+        Returns:
+            The second invariant.
+        """
+        return 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
+
+    @staticmethod
+    def invariant3(F: np.ndarray) -> Any:
+        """
+        Calculate the third invariant of the deformation gradient tensor.
+
+        Args:
+            F: The deformation gradient tensor as a 3D array.
+
+        Returns:
+            The third invariant.
+        """
+        return np.linalg.det(F)
 
     @staticmethod
     def right_cauchy_green(f: np.ndarray) -> Any:

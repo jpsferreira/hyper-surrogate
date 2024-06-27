@@ -42,7 +42,18 @@ def test_jacobian(def_gradients, K):
     jacobians = K.jacobian(def_gradients)
     assert np.allclose(jacobians, np.array([np.linalg.det(f) for f in def_gradients]))
 
+def test_invariant1(def_gradients, K):
+    invariant1 = K.invariant1(def_gradients)
+    assert np.allclose(invariant1, np.trace(def_gradients))
 
+def test_invariant2(def_gradients, K):
+    invariant2 = K.invariant2(def_gradients)
+    assert np.allclose(invariant2, 0.5 * (np.trace(def_gradients) ** 2 - np.trace(np.matmul(def_gradients, def_gradients))))
+
+def test_invariant3(def_gradients, K):
+    invariant3 = K.invariant3(def_gradients)
+    assert np.allclose(invariant3, np.array([np.linalg.det(f) for f in def_gradients]))
+        
 def test_pushforward(def_gradients, K):
     # test pushforward operation on unit tensors  (F * I * F^T)
     tensor_3x3 = np.array([np.eye(3) for _ in range(SIZE)])

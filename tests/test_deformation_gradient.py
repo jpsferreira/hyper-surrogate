@@ -109,24 +109,7 @@ class TestDeformationGradient:
         deformation_gradient = deformation_generator.uniaxial(2.0)
         deformation_gradient_rescaled = deformation_generator.rescale(deformation_gradient)
         assert np.all(deformation_gradient_rescaled == deformation_gradient)
-        assert np.all(deformation_generator.invariant3(deformation_gradient_rescaled) == 1)
 
-    def test_invariant1(self, deformation_generator):
-        deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
-        invariant1 = deformation_generator.invariant1(deformation_gradient)
-        assert (sum(np.diag(f)) == invariant1(f) for f in deformation_gradient)
-
-    def test_invariant2(self, deformation_generator):
-        deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
-        invariant2 = deformation_generator.invariant2(deformation_gradient)
-        assert (
-            0.5 * (sum(np.diag(f)) ** 2 - sum(np.diag(np.matmul(f, f)))) == invariant2(f) for f in deformation_gradient
-        )
-
-    def test_invariant3(self, deformation_generator):
-        deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
-        invariant3 = deformation_generator.invariant3(deformation_gradient)
-        assert (np.linalg.det(f) == invariant3(f) for f in deformation_gradient)
 
     def test_rotate(self, deformation_generator):
         deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])

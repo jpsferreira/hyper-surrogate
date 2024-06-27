@@ -146,46 +146,8 @@ class DeformationGradient:
         Returns:
             The rescaled deformation gradient tensor.
         """
-        return F / self.invariant3(F) ** (1.0 / 3.0)
+        return F / np.linalg.det(F) ** (1.0 / 3.0)
 
-    @staticmethod
-    def invariant1(F: np.ndarray) -> Any:
-        """
-        Calculate the first invariant of the deformation gradient tensor.
-
-        Args:
-            F: The deformation gradient tensor as a 3D array.
-
-        Returns:
-            The first invariant.
-        """
-        return np.trace(F)
-
-    @staticmethod
-    def invariant2(F: np.ndarray) -> Any:
-        """
-        Calculate the second invariant of the deformation gradient tensor.
-
-        Args:
-            F: The deformation gradient tensor as a 3D array.
-
-        Returns:
-            The second invariant.
-        """
-        return 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
-
-    @staticmethod
-    def invariant3(F: np.ndarray) -> Any:
-        """
-        Calculate the third invariant of the deformation gradient tensor.
-
-        Args:
-            F: The deformation gradient tensor as a 3D array.
-
-        Returns:
-            The third invariant.
-        """
-        return np.linalg.det(F)
 
     @staticmethod
     def to_radians(degree: float) -> float:
