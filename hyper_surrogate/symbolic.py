@@ -213,7 +213,7 @@ class SymbolicHandler:
         if tensor.shape != (3, 3):
             raise ValueError("Wrong.shape.")
         # Voigt notation conversion: xx, yy, zz, xy, xz, yz
-        voigt_vector = sym.Matrix(
+        return sym.Matrix(
             [
                 tensor[0, 0],  # xx
                 tensor[1, 1],  # yy
@@ -223,7 +223,6 @@ class SymbolicHandler:
                 tensor[1, 2],  # yz
             ]
         )
-        return voigt_vector
 
     @staticmethod
     def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> Any:
@@ -261,3 +260,55 @@ class SymbolicHandler:
             for (kk, ll), jj in voigt_indices.items():
                 voigt_matrix[ii, jj] = tensor[i, j, kk, ll]
         return voigt_matrix
+
+    @staticmethod
+    def pushforward_2nd_order(tensor2: sym.Matrix, f: sym.Matrix) -> Any:
+        """
+        Push forward a 2nd order tensor in material configuration.
+
+        args:
+        tensor2: Any - The 2nd order tensor
+        f: Any - The deformation gradient tensor
+
+        returns:
+        Any - The pushforwarded 2nd order tensor
+        """
+        return sym.simplify(f * tensor2 * f.T)
+
+    @staticmethod
+    def pushforward_4th_order(tensor4: sym.MutableDenseNDimArray, f: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Push forward a 4th order tensor in material configuration.
+
+        Args:
+            tensor4 (sym.MutableDenseNDimArray): The 4th order tensor.
+            f (sym.Matrix): The deformation gradient tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The pushforwarded 4th order tensor.
+        """
+        f_inv = f.inv()
+
+        # Calculate the pushforwarded tensor using comprehensions and broadcasting
+        result = sym.MutableDenseNDimArray(
+            [
+                [
+                    [
+                        [
+                            sum(
+                                f[i, m] * f[j, n] * tensor4[m, n, p, q] * f_inv[p, k] * f_inv[q, ll]
+                                for m in range(3)
+                                for n in range(3)
+                                for p in range(3)
+                                for q in range(3)
+                            )
+                            for ll in range(3)
+                        ]
+                        for k in range(3)
+                    ]
+                    for j in range(3)
+                ]
+                for i in range(3)
+            ]
+        )
+        return result

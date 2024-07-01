@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 import pytest
 import sympy as sym
@@ -47,6 +45,11 @@ def pk2(handler, sef) -> sym.Matrix:
 @pytest.fixture
 def cmat(handler, pk2) -> sym.ImmutableDenseNDimArray:
     return handler.cmat_tensor(pk2)
+
+
+@pytest.fixture
+def f() -> sym.Matrix:
+    return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i+1},{j+1})"))
 
 
 # testing
@@ -134,7 +137,6 @@ def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
 
 
 def test_reduce_2nd_order(handler, pk2):
-    logging.info(f"pk2.shape: {pk2.shape}")
     # reduce order of pk2. assert shape
     assert handler.reduce_2nd_order(pk2).shape == (6, 1)
 
@@ -142,3 +144,13 @@ def test_reduce_2nd_order(handler, pk2):
 def test_reduce_4th_order(handler, cmat):
     # reduce order of cmat. assert shape
     assert handler.reduce_4th_order(cmat).shape == (6, 6)
+
+
+def test_pushforward_2nd_order(handler, pk2, f):
+    # pushforward pk2 to cauchy stress tensor. assert shape
+    assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
+
+@pytest.mark.slow
+def test_pushforward_4th_order(handler, cmat, f):
+    # pushforward cmat to spatial stiffness tensor. assert shape
+    assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)

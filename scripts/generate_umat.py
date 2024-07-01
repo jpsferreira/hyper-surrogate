@@ -1,7 +1,12 @@
+import logging
+
 import sympy as sym
 
 from hyper_surrogate.materials import NeoHooke
-from hyper_surrogate.kinematics import Kinematics
+
+# set loglevel to INFO
+logging.basicConfig(level=logging.INFO)
+
 material = NeoHooke()
 pk2 = material.pk2_symb
 cmat = material.cmat_symb
@@ -14,26 +19,35 @@ c = f.T * f
 # We can substitute these values into the tensor expressions to get the expressions in terms of the deformation gradient tensor components.
 # C_11 is c[0,0], C_22 is c[1,1], C_33 is c[2,2], C_12 is c[0,1], C_13 is c[0,2], C_23 is c[1,2]
 sub_exp = {material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
-
+logging.info("Pushing forward pk2...")
 sigma = NeoHooke.pushforward_2nd_order(pk2, f)
+logging.info("Reducing pk2...")
 sigma = NeoHooke.reduce_2nd_order(sigma)
+logging.info("Pushing forward cmat...")
 smat = NeoHooke.pushforward_4th_order(cmat, f)
+logging.info("Reducing cmat...")
 smat = NeoHooke.reduce_4th_order(smat)
-
+logging.info("Substituting expressions...")
 sigma = sigma.subs(sub_exp)
 smat = smat.subs(sub_exp)
 
-print(sigma)
+
 # Extracting individual components to avoid using unsupported structures
-sigma_components = [sigma[i, j] for i in range(3) for j in range(3)]
-smat_components = [smat[i, j, k, l] for i in range(3) for j in range(3) for k in range(3) for l in range(3)]
-
+sigma_components = [sigma[i] for i in range(6)]
+smat_components = [smat[i, j] for i in range(6) for j in range(6)]
+logging.info("Gathering components...")
 # Generate Fortran code for each component
-sigma_code = [sym.fcode(comp, standard=90, source_format="free", assign_to=f'STRESS({i+1})') for i, comp in enumerate(sigma_components)]
-smat_code = [sym.fcode(comp, standard=90, source_format="free", assign_to=f'DDSDDE({i//9+1},{i%9+1})') for i, comp in enumerate(smat_components)]
+sigma_code = [
+    sym.fcode(comp, standard=90, source_format="free", assign_to=f"STRESS({i+1})")
+    for i, comp in enumerate(sigma_components)
+]
+smat_code = [
+    sym.fcode(comp, standard=90, source_format="free", assign_to=f"DDSDDE({i//6+1},{i%6+1})")
+    for i, comp in enumerate(smat_components)
+]
 
-pk2_code_str = "\n      ".join(pk2_code)
-cmat_code_str = "\n      ".join(cmat_code)
+pk2_code_str = "\n      ".join(sigma_code)
+cmat_code_str = "\n      ".join(smat_code)
 
 umat_code = f"""
       SUBROUTINE UMAT(STRESS, STATEV, DDSDDE, SSE, SPD, SCD,
@@ -56,7 +70,7 @@ umat_code = f"""
       ! Initialize material properties
       C10 = PROPS(1)
 
-      ! Define the stress calculation from the pk2 symbolic expression. 
+      ! Define the stress calculation from the pk2 symbolic expression.
       ! iterate over all components of the stress pk2_code
       {pk2_code_str}
 
