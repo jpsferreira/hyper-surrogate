@@ -146,9 +146,11 @@ def test_reduce_4th_order(handler, cmat):
     assert handler.reduce_4th_order(cmat).shape == (6, 6)
 
 
+@pytest.mark.slow
 def test_pushforward_2nd_order(handler, pk2, f):
     # pushforward pk2 to cauchy stress tensor. assert shape
     assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
+
 
 @pytest.mark.slow
 def test_pushforward_4th_order(handler, cmat, f):
