@@ -1,5 +1,5 @@
 import logging
-
+import datetime
 import sympy as sym
 from typing import Any
 from hyper_surrogate.materials import NeoHooke
@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 
-def eliminate_subexpressions(tensor: list, var_name: str) -> Any:
+def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
     """
     Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
@@ -20,9 +20,13 @@ def eliminate_subexpressions(tensor: list, var_name: str) -> Any:
     Returns:
         tuple: A tuple containing Fortran code for auxiliary variables and reduced expressions.
     """
+    # Extract individual components
+    #tensor_components = [tensor[i] for i in range(tensor.shape[0])]
+    tensor_components = [tensor[i, j] for i in range(tensor.shape[0]) for j in range(tensor.shape[1])]
+    # Convert to a matrix to check shape
     tensor_matrix = sym.Matrix(tensor)
     # Perform common subexpression elimination
-    replacements, reduced_exprs = sym.cse(tensor)
+    replacements, reduced_exprs = sym.cse(tensor_components)
 
     # Generate Fortran code for auxiliary variables (replacements)
     aux_code = [
@@ -37,7 +41,7 @@ def eliminate_subexpressions(tensor: list, var_name: str) -> Any:
             for i, expr in enumerate(reduced_exprs)
         ]
     else:  # If matrix
-        rows, cols = tensor.shape
+        _, cols = tensor.shape
         reduced_code = [
             sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i//cols+1},{i%cols+1})")
             for i, expr in enumerate(reduced_exprs)
@@ -70,56 +74,94 @@ sigma = sigma.subs(sub_exp)
 smat = smat.subs(sub_exp)
 
 
-# Extracting individual components to avoid using unsupported structures
-sigma_components = [sigma[i] for i in range(6)]
-smat_components = [smat[i, j] for i in range(6) for j in range(6)]
 logging.info("Gathering components...")
 # Generate Fortran code for each component
-# sigma_code = [
-#     sym.fcode(comp, standard=90, source_format="free", assign_to=f"STRESS({i+1})")
-#     for i, comp in enumerate(sigma_components)
-# ]
-# smat_code = [
-#     sym.fcode(comp, standard=90, source_format="free", assign_to=f"DDSDDE({i//6+1},{i%6+1})")
-#     for i, comp in enumerate(smat_components)
-# ]
-sigma_code = eliminate_subexpressions(sigma_components, 'STRESS')
-smat_code = eliminate_subexpressions(smat_components, 'DDSDDE')
 
-pk2_code_str = "\n      ".join(sigma_code)
-cmat_code_str = "\n      ".join(smat_code)
+sigma_code = common_subexpressions(sigma, 'STRESS')
+smat_code = common_subexpressions(smat, 'DDSDDE')
 
+sigma_code_str = "\n".join(sigma_code)
+smat_code_str = "\n".join(smat_code)
+
+today = datetime.datetime.now()
+description = f"Automatic generated code"
 umat_code = f"""
-      SUBROUTINE UMAT(STRESS, STATEV, DDSDDE, SSE, SPD, SCD,
-     & RPL, DDSDDT, DRPLDE, DRPLDT, STRAN, DSTRAN, TIME, DTIME,
-     & TEMP, DTEMP, PREDEF, DPRED, CMNAME, NDI, NSHR, NTENS,
-     & NSTATV, PROPS, NPROPS, COORDS, DROT, PNEWDT, CELENT,
-     & DFGRD0, DFGRD1, NOEL, NPT, LAYER, KSPT, KSTEP, KINC)
-      INCLUDE 'ABA_PARAM.INC'
-      DOUBLE PRECISION STRESS(NTENS), STATEV(NSTATV),
-     & DDSDDE(NTENS,NTENS), SSE, SPD, SCD, RPL, DDSDDT, DRPLDE,
-     & DRPLDT, STRAN(NTENS), DSTRAN(NTENS), TIME(2), DTIME,
-     & TEMP, DTEMP, PREDEF(*), DPRED(*), PROPS(*), COORDS(3),
-     & DROT(3,3), PNEWDT, CELENT, DFGRD0(3,3), DFGRD1(3,3)
-      INTEGER NDI, NSHR, NTENS, NSTATV, NPROPS, NOEL, NPT,
-     & LAYER, KSPT, KSTEP, KINC
-      CHARACTER*80 CMNAME
-      DOUBLE PRECISION C10  ! Material property, example
+!>********************************************************************
+!> Record of revisions:                                              |
+!>        Date        Programmer        Description of change        |
+!>        ====        ==========        =====================        |
+!>     {today}    Joao Ferreira      {description}           |
+!>--------------------------------------------------------------------
+!>     Description:
+!C>     
+!C>                 
+!C>    
+!>--------------------------------------------------------------------
+!>---------------------------------------------------------------------
 
-      ! Initialize material properties
-      C10 = PROPS(1)
+SUBROUTINE umat(stress,statev,ddsdde,sse,spd,scd, rpl,ddsddt,drplde,drpldt,  &
+    stran,dstran,time,dtime,temp,dtemp,predef,dpred,cmname,  &
+    ndi,nshr,ntens,nstatev,props,nprops,coords,drot,pnewdt,  &
+    celent,dfgrd0,dfgrd1,noel,npt,layer,kspt,kstep,kinc)
+!
+!use global  
+!----------------------------------------------------------------------
+!--------------------------- DECLARATIONS -----------------------------
+!----------------------------------------------------------------------
+INTEGER, INTENT(IN OUT)                  :: noel
+INTEGER, INTENT(IN OUT)                  :: npt
+INTEGER, INTENT(IN OUT)                  :: layer
+INTEGER, INTENT(IN OUT)                  :: kspt
+INTEGER, INTENT(IN OUT)                  :: kstep
+INTEGER, INTENT(IN OUT)                  :: kinc
+INTEGER, INTENT(IN OUT)                  :: ndi
+INTEGER, INTENT(IN OUT)                  :: nshr
+INTEGER, INTENT(IN OUT)                  :: ntens
+INTEGER, INTENT(IN OUT)                  :: nstatev
+INTEGER, INTENT(IN OUT)                  :: nprops
+DOUBLE PRECISION, INTENT(IN OUT)         :: sse
+DOUBLE PRECISION, INTENT(IN OUT)         :: spd
+DOUBLE PRECISION, INTENT(IN OUT)         :: scd
+DOUBLE PRECISION, INTENT(IN OUT)         :: rpl
+DOUBLE PRECISION, INTENT(IN OUT)         :: dtime
+DOUBLE PRECISION, INTENT(IN OUT)         :: drpldt
+DOUBLE PRECISION, INTENT(IN OUT)         :: temp
+DOUBLE PRECISION, INTENT(IN OUT)         :: dtemp
+CHARACTER (LEN=8), INTENT(IN OUT)        :: cmname
+DOUBLE PRECISION, INTENT(IN OUT)         :: pnewdt
+DOUBLE PRECISION, INTENT(IN OUT)         :: celent
 
-      ! Define the stress calculation from the pk2 symbolic expression.
-      ! iterate over all components of the stress pk2_code
-      {pk2_code_str}
+DOUBLE PRECISION, INTENT(IN OUT)         :: stress(ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: statev(nstatev)
+DOUBLE PRECISION, INTENT(IN OUT)         :: ddsdde(ntens,ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: ddsddt(ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: drplde(ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: stran(ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: dstran(ntens)
+DOUBLE PRECISION, INTENT(IN OUT)         :: time(2)
+DOUBLE PRECISION, INTENT(IN OUT)         :: predef(1)
+DOUBLE PRECISION, INTENT(IN OUT)         :: dpred(1)
+DOUBLE PRECISION, INTENT(IN)             :: props(nprops)
+DOUBLE PRECISION, INTENT(IN OUT)         :: coords(3)
+DOUBLE PRECISION, INTENT(IN OUT)         :: drot(3,3)
+DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd0(3,3)
+DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd1(3,3)
 
-      ! Define the tangent matrix calculation from the cmat symbolic expression
-      {cmat_code_str}
+DOUBLE PRECISION :: C10  ! Material property, example
 
-      RETURN
-      END
+! Initialize material properties
+C10 = PROPS(1)
+
+! Define the stress calculation from the pk2 symbolic expression.
+{sigma_code_str}
+
+! Define the tangent matrix calculation from the smat symbolic expression
+{smat_code_str}
+
+RETURN
+END SUBROUTINE umat
 """
 
 
-with open("UMAT_NeoHooke.f", "w") as file:
+with open("UMAT_NeoHooke.f90", "w") as file:
     file.write(umat_code)
