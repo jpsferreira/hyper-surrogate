@@ -1,12 +1,13 @@
-import logging
 import datetime
-import sympy as sym
+import logging
 from typing import Any
+
+import sympy as sym
+
 from hyper_surrogate.materials import NeoHooke
 
 # set loglevel to INFO
 logging.basicConfig(level=logging.INFO)
-
 
 
 def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
@@ -21,7 +22,7 @@ def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
         tuple: A tuple containing Fortran code for auxiliary variables and reduced expressions.
     """
     # Extract individual components
-    #tensor_components = [tensor[i] for i in range(tensor.shape[0])]
+    # tensor_components = [tensor[i] for i in range(tensor.shape[0])]
     tensor_components = [tensor[i, j] for i in range(tensor.shape[0]) for j in range(tensor.shape[1])]
     # Convert to a matrix to check shape
     tensor_matrix = sym.Matrix(tensor)
@@ -47,7 +48,8 @@ def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
             for i, expr in enumerate(reduced_exprs)
         ]
 
-    return aux_code+reduced_code
+    return aux_code + reduced_code
+
 
 material = NeoHooke()
 pk2 = material.pk2_symb
@@ -77,14 +79,14 @@ smat = smat.subs(sub_exp)
 logging.info("Gathering components...")
 # Generate Fortran code for each component
 
-sigma_code = common_subexpressions(sigma, 'STRESS')
-smat_code = common_subexpressions(smat, 'DDSDDE')
+sigma_code = common_subexpressions(sigma, "STRESS")
+smat_code = common_subexpressions(smat, "DDSDDE")
 
 sigma_code_str = "\n".join(sigma_code)
 smat_code_str = "\n".join(smat_code)
 
 today = datetime.datetime.now()
-description = f"Automatic generated code"
+description = "Automatic generated code"
 umat_code = f"""
 !>********************************************************************
 !> Record of revisions:                                              |
@@ -93,9 +95,9 @@ umat_code = f"""
 !>     {today}    Joao Ferreira      {description}           |
 !>--------------------------------------------------------------------
 !>     Description:
-!C>     
-!C>                 
-!C>    
+!C>
+!C>
+!C>
 !>--------------------------------------------------------------------
 !>---------------------------------------------------------------------
 
@@ -104,7 +106,7 @@ SUBROUTINE umat(stress,statev,ddsdde,sse,spd,scd, rpl,ddsddt,drplde,drpldt,  &
     ndi,nshr,ntens,nstatev,props,nprops,coords,drot,pnewdt,  &
     celent,dfgrd0,dfgrd1,noel,npt,layer,kspt,kstep,kinc)
 !
-!use global  
+!use global
 !----------------------------------------------------------------------
 !--------------------------- DECLARATIONS -----------------------------
 !----------------------------------------------------------------------
