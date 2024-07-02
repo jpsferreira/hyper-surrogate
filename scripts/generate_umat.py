@@ -1,11 +1,49 @@
 import logging
 
 import sympy as sym
-
+from typing import Any
 from hyper_surrogate.materials import NeoHooke
 
 # set loglevel to INFO
 logging.basicConfig(level=logging.INFO)
+
+
+
+def eliminate_subexpressions(tensor: list, var_name: str) -> Any:
+    """
+    Perform common subexpression elimination on a vector or matrix and generate Fortran code.
+
+    Args:
+        vector (list): The symbolic vector or matrix to process.
+        var_name (str): The base name for the variables in the Fortran code.
+
+    Returns:
+        tuple: A tuple containing Fortran code for auxiliary variables and reduced expressions.
+    """
+    tensor_matrix = sym.Matrix(tensor)
+    # Perform common subexpression elimination
+    replacements, reduced_exprs = sym.cse(tensor)
+
+    # Generate Fortran code for auxiliary variables (replacements)
+    aux_code = [
+        sym.fcode(expr, standard=90, source_format="free", assign_to=sym.fcode(var, standard=90, source_format="free"))
+        for var, expr in replacements
+    ]
+
+    # Generate Fortran code for reduced expressions
+    if tensor_matrix.shape[1] == 1:  # If vector
+        reduced_code = [
+            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i+1})")
+            for i, expr in enumerate(reduced_exprs)
+        ]
+    else:  # If matrix
+        rows, cols = tensor.shape
+        reduced_code = [
+            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i//cols+1},{i%cols+1})")
+            for i, expr in enumerate(reduced_exprs)
+        ]
+
+    return aux_code+reduced_code
 
 material = NeoHooke()
 pk2 = material.pk2_symb
@@ -37,14 +75,16 @@ sigma_components = [sigma[i] for i in range(6)]
 smat_components = [smat[i, j] for i in range(6) for j in range(6)]
 logging.info("Gathering components...")
 # Generate Fortran code for each component
-sigma_code = [
-    sym.fcode(comp, standard=90, source_format="free", assign_to=f"STRESS({i+1})")
-    for i, comp in enumerate(sigma_components)
-]
-smat_code = [
-    sym.fcode(comp, standard=90, source_format="free", assign_to=f"DDSDDE({i//6+1},{i%6+1})")
-    for i, comp in enumerate(smat_components)
-]
+# sigma_code = [
+#     sym.fcode(comp, standard=90, source_format="free", assign_to=f"STRESS({i+1})")
+#     for i, comp in enumerate(sigma_components)
+# ]
+# smat_code = [
+#     sym.fcode(comp, standard=90, source_format="free", assign_to=f"DDSDDE({i//6+1},{i%6+1})")
+#     for i, comp in enumerate(smat_components)
+# ]
+sigma_code = eliminate_subexpressions(sigma_components, 'STRESS')
+smat_code = eliminate_subexpressions(smat_components, 'DDSDDE')
 
 pk2_code_str = "\n      ".join(sigma_code)
 cmat_code_str = "\n      ".join(smat_code)
@@ -55,7 +95,6 @@ umat_code = f"""
      & TEMP, DTEMP, PREDEF, DPRED, CMNAME, NDI, NSHR, NTENS,
      & NSTATV, PROPS, NPROPS, COORDS, DROT, PNEWDT, CELENT,
      & DFGRD0, DFGRD1, NOEL, NPT, LAYER, KSPT, KSTEP, KINC)
-      IMPLICIT NONE
       INCLUDE 'ABA_PARAM.INC'
       DOUBLE PRECISION STRESS(NTENS), STATEV(NSTATV),
      & DDSDDE(NTENS,NTENS), SSE, SPD, SCD, RPL, DDSDDT, DRPLDE,
