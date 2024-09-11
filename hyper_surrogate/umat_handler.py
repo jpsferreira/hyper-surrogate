@@ -1,5 +1,6 @@
 import datetime
 import logging
+from pathlib import Path
 from typing import Any
 
 import sympy as sym
@@ -84,7 +85,7 @@ class UMATHandler:
         c = self.f.T * self.f
         return {self.material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
 
-    def generate(self, filename: str) -> None:
+    def generate(self, filename: Path) -> None:
         """
         Generate the UMAT code for the material model and write it to a file.
 
@@ -130,12 +131,12 @@ class UMATHandler:
         """
         return "\n".join(code)
 
-    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: str) -> None:
+    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: Path) -> None:
         """
         Write the generated Fortran code into a UMAT subroutine file.
 
         Args:
-            filename (str): The file path where the UMAT code will be written.
+            filename (Path): The file path where the UMAT code will be written.
         """
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         description = f"Automatically generated code for the UMAT subroutine using {self.material.__class__.__name__}."
