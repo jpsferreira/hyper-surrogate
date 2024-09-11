@@ -14,8 +14,6 @@ class UMATHandler:
             material_model: The material model (e.g., NeoHooke) to generate UMAT code for.
         """
         self.material = material_model
-        self.sigma_code = None
-        self.smat_code = None
 
     @staticmethod
     def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
@@ -100,15 +98,15 @@ class UMATHandler:
         """
         return "\n".join(code)
 
-    def write_umat_code(self, filename: str):
+    def write_umat_code(self, filename: str) -> None:
         """
         Write the generated Fortran code into a UMAT subroutine file.
 
         Args:
             filename (str): The file path where the UMAT code will be written.
         """
-        sigma_code_str = self.code_as_string(self.sigma_code)
-        smat_code_str = self.code_as_string(self.smat_code)
+        sigma_code_str = self.code_as_string(self.cauchy)
+        smat_code_str = self.code_as_string(self.ddsdde)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         description = f"Automatically generated code for the UMAT subroutine using {self.material.__class__.__name__}."
         umat_code = f"""
@@ -190,13 +188,13 @@ END SUBROUTINE umat
             file.write(umat_code)
         logging.info(f"UMAT subroutine written to {filename}")
 
-    def generate(self, filename: str):
+    def generate(self, filename: str) -> None:
         """
         Generate the UMAT code for the material model and write it to a file.
 
         Args:
             filename (str): The file path where the UMAT code will be written.
         """
-        self.sigma_code = self.generate_expression(self.cauchy_stress, "STRESS")
-        self.smat_code = self.generate_expression(self.tangent_matrix, "DDSDDE")
+        self.cauchy = self.generate_expression(self.cauchy_stress, "STRESS")
+        self.ddsdde = self.generate_expression(self.tangent_matrix, "DDSDDE")
         self.write_umat_code(filename)
