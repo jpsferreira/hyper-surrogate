@@ -24,14 +24,14 @@ class SymbolicHandler:
         """
         return [self.c_tensor[i, j] for i in range(3) for j in range(3)]
 
-    def _c_tensor(self) -> sym.Matrix:
+    def _c_tensor(self) -> sym.ImmutableMatrix:
         """
         Create a 3x3 matrix of symbols.
 
         Returns:
             sym.Matrix: A 3x3 matrix of symbols.
         """
-        return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"C_{i+1}{j+1}"))
+        return sym.ImmutableMatrix(3, 3, lambda i, j: sym.Symbol(f"C_{i + 1}{j + 1}"))
 
     # multuply c_tensor by itself
     def _c_tensor_squared(self) -> Any:
@@ -99,12 +99,10 @@ class SymbolicHandler:
         Returns:
             sym.MutableDenseNDimArray: The cmat tensor.
         """
-        return sym.ImmutableDenseNDimArray(
-            [
-                [[[sym.diff(pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
-                for i in range(3)
-            ]
-        )
+        return sym.ImmutableDenseNDimArray([
+            [[[sym.diff(2 * pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
+            for i in range(3)
+        ])
 
     def substitute(
         self,
@@ -213,17 +211,14 @@ class SymbolicHandler:
         if tensor.shape != (3, 3):
             raise ValueError("Wrong.shape.")
         # Voigt notation conversion: xx, yy, zz, xy, xz, yz
-        voigt_vector = sym.Matrix(
-            [
-                tensor[0, 0],  # xx
-                tensor[1, 1],  # yy
-                tensor[2, 2],  # zz
-                tensor[0, 1],  # xy
-                tensor[0, 2],  # xz
-                tensor[1, 2],  # yz
-            ]
-        )
-        return voigt_vector
+        return sym.Matrix([
+            tensor[0, 0],  # xx
+            tensor[1, 1],  # yy
+            tensor[2, 2],  # zz
+            tensor[0, 1],  # xy
+            tensor[0, 2],  # xz
+            tensor[1, 2],  # yz
+        ])
 
     @staticmethod
     def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> Any:
@@ -240,24 +235,102 @@ class SymbolicHandler:
         if tensor.shape != (3, 3, 3, 3):
             raise ValueError("Wrong.shape.")
 
-        # Voigt notation indices for 3D case
-        voigt_indices = {
-            (0, 0): 0,
-            (1, 1): 1,
-            (2, 2): 2,
-            (1, 2): 3,
-            (2, 1): 3,
-            (0, 2): 4,
-            (2, 0): 4,
-            (0, 1): 5,
-            (1, 0): 5,
-        }
+        # Voigt notation index mapping
+        ii1 = [0, 1, 2, 0, 0, 1]
+        ii2 = [0, 1, 2, 1, 2, 2]
 
-        # Initialize a 6x6 matrix for the tangent stiffness matrix in Voigt notation
+        # Initialize a 6x6 matrix
         voigt_matrix = sym.Matrix.zeros(6, 6)
 
-        # Fill the Voigt matrix
-        for (i, j), ii in voigt_indices.items():
-            for (kk, ll), jj in voigt_indices.items():
-                voigt_matrix[ii, jj] = tensor[i, j, kk, ll]
+        # Fill the Voigt matrix by averaging symmetric components of the 4th-order tensor
+        for i in range(6):
+            for j in range(6):
+                # Access the relevant tensor components using ii1 and ii2 mappings
+                pp1 = tensor[ii1[i], ii2[i], ii1[j], ii2[j]]
+                pp2 = tensor[ii1[i], ii2[i], ii2[j], ii1[j]]
+                # Average the two permutations to ensure symmetry
+                voigt_matrix[i, j] = 0.5 * (pp1 + pp2)
         return voigt_matrix
+
+    @staticmethod
+    def pushforward_2nd_order(tensor2: sym.Matrix, f: sym.Matrix) -> Any:
+        """
+        Push forward a 2nd order tensor in material configuration.
+
+        args:
+        tensor2: Any - The 2nd order tensor
+        f: Any - The deformation gradient tensor
+
+        returns:
+        Any - The pushforwarded 2nd order tensor
+        """
+        return sym.simplify(f * tensor2 * f.T)
+
+    @staticmethod
+    def pushforward_4th_order(tensor4: sym.MutableDenseNDimArray, f: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Push forward a 4th order tensor in material configuration.
+
+        Args:
+            tensor4 (sym.MutableDenseNDimArray): The 4th order tensor.
+            f (sym.Matrix): The deformation gradient tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The pushforwarded 4th order tensor.
+        """
+        # Calculate the pushforwarded tensor using comprehensions and broadcasting
+        return sym.MutableDenseNDimArray([
+            [
+                [
+                    [
+                        sum(
+                            f[i, ii] * f[j, jj] * f[k, kk] * f[l0, ll] * tensor4[ii, jj, kk, ll]
+                            for ii in range(3)
+                            for jj in range(3)
+                            for kk in range(3)
+                            for ll in range(3)
+                        )
+                        for l0 in range(3)
+                    ]
+                    for k in range(3)
+                ]
+                for j in range(3)
+            ]
+            for i in range(3)
+        ])
+
+    @staticmethod
+    def jaumann_rate_mat(sigma: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Compute the Jaumann rate contribution for the spatial elasticity tensor.
+
+        Args:
+            sigma (sym.Matrix): The Cauchy stress tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The Jaumann rate contribution (4th order tensor).
+        """
+        # Ensure sigma is a 3x3 matrix
+        if sigma.shape != (3, 3):
+            raise ValueError("Wrongshape")
+
+        # Use list comprehension to build the 4th-order tensor directly
+        return sym.MutableDenseNDimArray([
+            [
+                [
+                    [
+                        (1 / 2)
+                        * (
+                            int(i == k) * sigma[j, ll]
+                            + sigma[i, k] * int(j == ll)
+                            + int(i == ll) * sigma[j, k]
+                            + sigma[i, ll] * int(j == k)
+                        )
+                        for ll in range(3)
+                    ]
+                    for k in range(3)
+                ]
+                for j in range(3)
+            ]
+            for i in range(3)
+        ])
