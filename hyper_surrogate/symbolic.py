@@ -278,21 +278,19 @@ class SymbolicHandler:
         Returns:
             sym.MutableDenseNDimArray: The pushforwarded 4th order tensor.
         """
-        f_inv = f.inv()
-
         # Calculate the pushforwarded tensor using comprehensions and broadcasting
-        result = sym.MutableDenseNDimArray([
+        return sym.MutableDenseNDimArray([
             [
                 [
                     [
                         sum(
-                            f[i, m] * f[j, n] * tensor4[m, n, p, q] * f_inv[p, k] * f_inv[q, ll]
-                            for m in range(3)
-                            for n in range(3)
-                            for p in range(3)
-                            for q in range(3)
+                            f[i, ii] * f[j, jj] * f[k, kk] * f[l0, ll] * tensor4[ii, jj, kk, ll]
+                            for ii in range(3)
+                            for jj in range(3)
+                            for kk in range(3)
+                            for ll in range(3)
                         )
-                        for ll in range(3)
+                        for l0 in range(3)
                     ]
                     for k in range(3)
                 ]
@@ -300,4 +298,3 @@ class SymbolicHandler:
             ]
             for i in range(3)
         ])
-        return result
