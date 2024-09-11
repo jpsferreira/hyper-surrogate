@@ -298,3 +298,39 @@ class SymbolicHandler:
             ]
             for i in range(3)
         ])
+
+    @staticmethod
+    def jaumann_rate_mat(sigma: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Compute the Jaumann rate contribution for the spatial elasticity tensor.
+
+        Args:
+            sigma (sym.Matrix): The Cauchy stress tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The Jaumann rate contribution (4th order tensor).
+        """
+        # Ensure sigma is a 3x3 matrix
+        if sigma.shape != (3, 3):
+            raise ValueError("Wrongshape")
+
+        # Use list comprehension to build the 4th-order tensor directly
+        return sym.MutableDenseNDimArray([
+            [
+                [
+                    [
+                        (1 / 2)
+                        * (
+                            int(i == k) * sigma[j, ll]
+                            + sigma[i, k] * int(j == ll)
+                            + int(i == ll) * sigma[j, k]
+                            + sigma[i, ll] * int(j == k)
+                        )
+                        for ll in range(3)
+                    ]
+                    for k in range(3)
+                ]
+                for j in range(3)
+            ]
+            for i in range(3)
+        ])
