@@ -24,14 +24,14 @@ class SymbolicHandler:
         """
         return [self.c_tensor[i, j] for i in range(3) for j in range(3)]
 
-    def _c_tensor(self) -> sym.Matrix:
+    def _c_tensor(self) -> sym.ImmutableMatrix:
         """
         Create a 3x3 matrix of symbols.
 
         Returns:
             sym.Matrix: A 3x3 matrix of symbols.
         """
-        return sym.ImmutableMatrix(3, 3, lambda i, j: sym.Symbol(f"C_{i+1}{j+1}"))
+        return sym.ImmutableMatrix(3, 3, lambda i, j: sym.Symbol(f"C_{i + 1}{j + 1}"))
 
     # multuply c_tensor by itself
     def _c_tensor_squared(self) -> Any:
@@ -65,9 +65,7 @@ class SymbolicHandler:
             sym.Expr: The second invariant of the c_tensor.
         """
         c_squared = self._c_tensor_squared()
-        return sym.Rational(1, 2) * (
-            self.c_tensor.multiply(self.c_tensor).trace() - c_squared.trace()
-        )
+        return sym.Rational(1, 2) * (self.c_tensor.multiply(self.c_tensor).trace() - c_squared.trace())
 
     @property
     def invariant3(self) -> Any:
@@ -89,9 +87,7 @@ class SymbolicHandler:
         Returns:
             sym.Matrix: The pk2 tensor.
         """
-        return sym.Matrix(
-            [[sym.diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)]
-        )
+        return sym.Matrix([[sym.diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
 
     def cmat_tensor(self, pk2: sym.Matrix) -> sym.ImmutableDenseNDimArray:
         """
@@ -103,21 +99,10 @@ class SymbolicHandler:
         Returns:
             sym.MutableDenseNDimArray: The cmat tensor.
         """
-        return sym.ImmutableDenseNDimArray(
-            [
-                [
-                    [
-                        [
-                            sym.diff(2 * pk2[i, j], self.c_tensor[k, ll])
-                            for ll in range(3)
-                        ]
-                        for k in range(3)
-                    ]
-                    for j in range(3)
-                ]
-                for i in range(3)
-            ]
-        )
+        return sym.ImmutableDenseNDimArray([
+            [[[sym.diff(2 * pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
+            for i in range(3)
+        ])
 
     def substitute(
         self,
@@ -139,17 +124,11 @@ class SymbolicHandler:
         Raises:
             ValueError: If numerical_tensor is not a 3x3 matrix.
         """
-        if not isinstance(
-            numerical_c_tensor, np.ndarray
-        ) or numerical_c_tensor.shape != (3, 3):
+        if not isinstance(numerical_c_tensor, np.ndarray) or numerical_c_tensor.shape != (3, 3):
             raise ValueError("c_tensor.shape")
 
         # Start with substitutions for c_tensor elements
-        substitutions = {
-            self.c_tensor[i, j]: numerical_c_tensor[i, j]
-            for i in range(3)
-            for j in range(3)
-        }
+        substitutions = {self.c_tensor[i, j]: numerical_c_tensor[i, j] for i in range(3) for j in range(3)}
         # Merge additional substitution dictionaries from *args
         substitutions.update(*args)
         return symbolic_tensor.subs(substitutions)
@@ -203,9 +182,7 @@ class SymbolicHandler:
         """
         return lambdified_tensor(*args)
 
-    def evaluate_iterator(
-        self, lambdified_tensor: Any, numerical_c_tensors: np.ndarray, *args: Any
-    ) -> Any:
+    def evaluate_iterator(self, lambdified_tensor: Any, numerical_c_tensors: np.ndarray, *args: Any) -> Any:
         """
         Evaluate a lambdified tensor with specific values.
 
@@ -234,16 +211,14 @@ class SymbolicHandler:
         if tensor.shape != (3, 3):
             raise ValueError("Wrong.shape.")
         # Voigt notation conversion: xx, yy, zz, xy, xz, yz
-        return sym.Matrix(
-            [
-                tensor[0, 0],  # xx
-                tensor[1, 1],  # yy
-                tensor[2, 2],  # zz
-                tensor[0, 1],  # xy
-                tensor[0, 2],  # xz
-                tensor[1, 2],  # yz
-            ]
-        )
+        return sym.Matrix([
+            tensor[0, 0],  # xx
+            tensor[1, 1],  # yy
+            tensor[2, 2],  # zz
+            tensor[0, 1],  # xy
+            tensor[0, 2],  # xz
+            tensor[1, 2],  # yz
+        ])
 
     @staticmethod
     def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> Any:
@@ -263,7 +238,6 @@ class SymbolicHandler:
         # Voigt notation index mapping
         ii1 = [0, 1, 2, 0, 0, 1]
         ii2 = [0, 1, 2, 1, 2, 2]
-        
 
         # Initialize a 6x6 matrix
         voigt_matrix = sym.Matrix.zeros(6, 6)
@@ -293,9 +267,7 @@ class SymbolicHandler:
         return sym.simplify(f * tensor2 * f.T)
 
     @staticmethod
-    def pushforward_4th_order(
-        tensor4: sym.MutableDenseNDimArray, f: sym.Matrix
-    ) -> sym.MutableDenseNDimArray:
+    def pushforward_4th_order(tensor4: sym.MutableDenseNDimArray, f: sym.Matrix) -> sym.MutableDenseNDimArray:
         """
         Push forward a 4th order tensor in material configuration.
 
@@ -309,29 +281,23 @@ class SymbolicHandler:
         f_inv = f.inv()
 
         # Calculate the pushforwarded tensor using comprehensions and broadcasting
-        result = sym.MutableDenseNDimArray(
+        result = sym.MutableDenseNDimArray([
             [
                 [
                     [
-                        [
-                            sum(
-                                f[i, m]
-                                * f[j, n]
-                                * tensor4[m, n, p, q]
-                                * f_inv[p, k]
-                                * f_inv[q, ll]
-                                for m in range(3)
-                                for n in range(3)
-                                for p in range(3)
-                                for q in range(3)
-                            )
-                            for ll in range(3)
-                        ]
-                        for k in range(3)
+                        sum(
+                            f[i, m] * f[j, n] * tensor4[m, n, p, q] * f_inv[p, k] * f_inv[q, ll]
+                            for m in range(3)
+                            for n in range(3)
+                            for p in range(3)
+                            for q in range(3)
+                        )
+                        for ll in range(3)
                     ]
-                    for j in range(3)
+                    for k in range(3)
                 ]
-                for i in range(3)
+                for j in range(3)
             ]
-        )
+            for i in range(3)
+        ])
         return result

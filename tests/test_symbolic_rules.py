@@ -49,7 +49,7 @@ def cmat(handler, pk2) -> sym.ImmutableDenseNDimArray:
 
 @pytest.fixture
 def f() -> sym.Matrix:
-    return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i+1},{j+1})"))
+    return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i + 1},{j + 1})"))
 
 
 # testing

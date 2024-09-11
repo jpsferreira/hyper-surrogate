@@ -95,27 +95,21 @@ class DeformationGradient:
         """
         c, s = np.cos(angle), np.sin(angle)
         dict_axis = {
-            0: np.array(
-                [
-                    [1, 0, 0],
-                    [0, c, -s],
-                    [0, s, c],
-                ]
-            ),
-            1: np.array(
-                [
-                    [c, 0, s],
-                    [0, 1, 0],
-                    [-s, 0, c],
-                ]
-            ),
-            2: np.array(
-                [
-                    [c, -s, 0],
-                    [s, c, 0],
-                    [0, 0, 1],
-                ]
-            ),
+            0: np.array([
+                [1, 0, 0],
+                [0, c, -s],
+                [0, s, c],
+            ]),
+            1: np.array([
+                [c, 0, s],
+                [0, 1, 0],
+                [-s, 0, c],
+            ]),
+            2: np.array([
+                [c, -s, 0],
+                [s, c, 0],
+                [0, 0, 1],
+            ]),
         }
         return dict_axis[axis] if axis in dict_axis else np.eye(3)
 

@@ -38,13 +38,13 @@ def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
     # Generate Fortran code for reduced expressions
     if tensor_matrix.shape[1] == 1:  # If vector
         reduced_code = [
-            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i+1})")
+            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i + 1})")
             for i, expr in enumerate(reduced_exprs)
         ]
     else:  # If matrix
         _, cols = tensor.shape
         reduced_code = [
-            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i//cols+1},{i%cols+1})")
+            sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i // cols + 1},{i % cols + 1})")
             for i, expr in enumerate(reduced_exprs)
         ]
 
@@ -57,7 +57,7 @@ cmat = material.cmat_symb
 
 # pk2 and cmat are sympy expressions written in terms of the material parameters and right Cauchy-Green tensor components.
 # create symbolic deformation gradient tensor
-f = sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i+1},{j+1})"))
+f = sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i + 1},{j + 1})"))
 # calculate the right Cauchy-Green tensor from the deformation gradient tensor
 c = f.T * f
 # We can substitute these values into the tensor expressions to get the expressions in terms of the deformation gradient tensor components.
