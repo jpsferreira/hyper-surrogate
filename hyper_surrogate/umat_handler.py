@@ -40,7 +40,10 @@ class UMATHandler:
         # Generate Fortran code for auxiliary variables (replacements)
         aux_code = [
             sym.fcode(
-                expr, standard=90, source_format="free", assign_to=sym.fcode(var, standard=90, source_format="free")
+                expr,
+                standard=90,
+                source_format="free",
+                assign_to=sym.fcode(var, standard=90, source_format="free"),
             )
             for var, expr in replacements
         ]
@@ -48,14 +51,22 @@ class UMATHandler:
         # Generate Fortran code for reduced expressions
         if tensor_matrix.shape[1] == 1:  # If vector
             reduced_code = [
-                sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i + 1})")
+                sym.fcode(
+                    expr,
+                    standard=90,
+                    source_format="free",
+                    assign_to=f"{var_name}({i + 1})",
+                )
                 for i, expr in enumerate(reduced_exprs)
             ]
         else:  # If matrix
             _, cols = tensor.shape
             reduced_code = [
                 sym.fcode(
-                    expr, standard=90, source_format="free", assign_to=f"{var_name}({i // cols + 1},{i % cols + 1})"
+                    expr,
+                    standard=90,
+                    source_format="free",
+                    assign_to=f"{var_name}({i // cols + 1},{i % cols + 1})",
                 )
                 for i, expr in enumerate(reduced_exprs)
             ]
@@ -73,7 +84,7 @@ class UMATHandler:
         c = self.f.T * self.f
         return {self.material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
 
-    def generate(self, filename: str):
+    def generate(self, filename: str) -> None:
         """
         Generate the UMAT code for the material model and write it to a file.
 
@@ -119,7 +130,7 @@ class UMATHandler:
         """
         return "\n".join(code)
 
-    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: str):
+    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: str) -> None:
         """
         Write the generated Fortran code into a UMAT subroutine file.
 
