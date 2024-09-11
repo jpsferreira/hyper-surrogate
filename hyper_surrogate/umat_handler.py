@@ -14,43 +14,51 @@ class UMATHandler:
             material_model: The material model (e.g., NeoHooke) to generate UMAT code for.
         """
         self.material = material_model
+        self.sigma_code = None
+        self.smat_code = None
 
     @staticmethod
     def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
         """
-        Perform common subexpression elimination (CSE) on a tensor and generate Fortran code.
+        Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
         Args:
-            tensor (sym.Matrix): The symbolic tensor to process.
+            vector (list): The symbolic vector or matrix to process.
             var_name (str): The base name for the variables in the Fortran code.
 
         Returns:
             tuple: A tuple containing Fortran code for auxiliary variables and reduced expressions.
         """
+        # Extract individual components
+        # tensor_components = [tensor[i] for i in range(tensor.shape[0])]
         tensor_components = [tensor[i, j] for i in range(tensor.shape[0]) for j in range(tensor.shape[1])]
+        # Convert to a matrix to check shape
+        tensor_matrix = sym.Matrix(tensor)
+        # Perform common subexpression elimination
         replacements, reduced_exprs = sym.cse(tensor_components)
 
         # Generate Fortran code for auxiliary variables (replacements)
         aux_code = [
             sym.fcode(
-                expr,
-                standard=90,
-                source_format="free",
-                assign_to=sym.fcode(var, standard=90, source_format="free"),
+                expr, standard=90, source_format="free", assign_to=sym.fcode(var, standard=90, source_format="free")
             )
             for var, expr in replacements
         ]
 
         # Generate Fortran code for reduced expressions
-        reduced_code = [
-            sym.fcode(
-                expr,
-                standard=90,
-                source_format="free",
-                assign_to=f"{var_name}({i + 1})",
-            )
-            for i, expr in enumerate(reduced_exprs)
-        ]
+        if tensor_matrix.shape[1] == 1:  # If vector
+            reduced_code = [
+                sym.fcode(expr, standard=90, source_format="free", assign_to=f"{var_name}({i + 1})")
+                for i, expr in enumerate(reduced_exprs)
+            ]
+        else:  # If matrix
+            _, cols = tensor.shape
+            reduced_code = [
+                sym.fcode(
+                    expr, standard=90, source_format="free", assign_to=f"{var_name}({i // cols + 1},{i % cols + 1})"
+                )
+                for i, expr in enumerate(reduced_exprs)
+            ]
 
         return aux_code + reduced_code
 
@@ -65,8 +73,21 @@ class UMATHandler:
         c = self.f.T * self.f
         return {self.material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
 
+    def generate(self, filename: str):
+        """
+        Generate the UMAT code for the material model and write it to a file.
+
+        Args:
+            filename (str): The file path where the UMAT code will be written.
+        """
+        sigma_code = self.generate_expression(self.cauchy, "stress")
+        smat_code = self.generate_expression(self.tangent, "ddsdde")
+        sigma_code_str = self.code_as_string(sigma_code)
+        smat_code_str = self.code_as_string(smat_code)
+        self.write_umat_code(sigma_code_str, smat_code_str, filename)
+
     @property
-    def cauchy_stress(self) -> Any:
+    def cauchy(self) -> Any:
         """
         Generate the symbolic expression for the Cauchy stress tensor.
         """
@@ -74,7 +95,7 @@ class UMATHandler:
         return self.material.cauchy(self.f).subs(self.sub_exp)
 
     @property
-    def tangent_matrix(self) -> Any:
+    def tangent(self) -> Any:
         """
         Generate the symbolic expression for the tangent matrix.
         """
@@ -98,15 +119,13 @@ class UMATHandler:
         """
         return "\n".join(code)
 
-    def write_umat_code(self, filename: str) -> None:
+    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: str):
         """
         Write the generated Fortran code into a UMAT subroutine file.
 
         Args:
             filename (str): The file path where the UMAT code will be written.
         """
-        sigma_code_str = self.code_as_string(self.cauchy)
-        smat_code_str = self.code_as_string(self.ddsdde)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         description = f"Automatically generated code for the UMAT subroutine using {self.material.__class__.__name__}."
         umat_code = f"""
@@ -188,13 +207,13 @@ END SUBROUTINE umat
             file.write(umat_code)
         logging.info(f"UMAT subroutine written to {filename}")
 
-    def generate(self, filename: str) -> None:
-        """
-        Generate the UMAT code for the material model and write it to a file.
+    # def generate(self, filename: str):
+    #     """
+    #     Generate the UMAT code for the material model and write it to a file.
 
-        Args:
-            filename (str): The file path where the UMAT code will be written.
-        """
-        self.cauchy = self.generate_expression(self.cauchy_stress, "STRESS")
-        self.ddsdde = self.generate_expression(self.tangent_matrix, "DDSDDE")
-        self.write_umat_code(filename)
+    #     Args:
+    #         filename (str): The file path where the UMAT code will be written.
+    #     """
+    #     self.sigma_code = self.generate_expression(self.cauchy_stress, "STRESS")
+    #     self.smat_code = self.generate_expression(self.tangent_matrix, "DDSDDE")
+    #     self.write_umat_code(filename)

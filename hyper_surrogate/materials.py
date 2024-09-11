@@ -54,6 +54,7 @@ class Material(SymbolicHandler):
         return self.reduce_2nd_order(self.sigma_symb(f))
 
     def tangent(self, f: sym.Matrix) -> Any:
+        # TODO:        # implement jaumman_rate_mat
         return self.reduce_4th_order(self.smat_symb(f))
 
     def pk2(self) -> Any:
