@@ -261,3 +261,90 @@ class SymbolicHandler:
             for (kk, ll), jj in voigt_indices.items():
                 voigt_matrix[ii, jj] = tensor[i, j, kk, ll]
         return voigt_matrix
+
+    @staticmethod
+    def pushforward_2nd_order(tensor2: sym.Matrix, f: sym.Matrix) -> Any:
+        """
+        Push forward a 2nd order tensor in material configuration.
+
+        args:
+        tensor2: Any - The 2nd order tensor
+        f: Any - The deformation gradient tensor
+
+        returns:
+        Any - The pushforwarded 2nd order tensor
+        """
+        return sym.simplify(f * tensor2 * f.T)
+
+    @staticmethod
+    def pushforward_4th_order(tensor4: sym.MutableDenseNDimArray, f: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Push forward a 4th order tensor in material configuration.
+
+        Args:
+            tensor4 (sym.MutableDenseNDimArray): The 4th order tensor.
+            f (sym.Matrix): The deformation gradient tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The pushforwarded 4th order tensor.
+        """
+        # Calculate the pushforwarded tensor using comprehensions and broadcasting
+        return sym.MutableDenseNDimArray(
+            [
+                [
+                    [
+                        [
+                            sum(
+                                f[i, ii] * f[j, jj] * f[k, kk] * f[l0, ll] * tensor4[ii, jj, kk, ll]
+                                for ii in range(3)
+                                for jj in range(3)
+                                for kk in range(3)
+                                for ll in range(3)
+                            )
+                            for l0 in range(3)
+                        ]
+                        for k in range(3)
+                    ]
+                    for j in range(3)
+                ]
+                for i in range(3)
+            ]
+        )
+
+    @staticmethod
+    def jr(sigma: sym.Matrix) -> sym.MutableDenseNDimArray:
+        """
+        Compute the Jaumann rate contribution for the spatial elasticity tensor.
+
+        Args:
+            sigma (sym.Matrix): The Cauchy stress tensor (2nd order tensor).
+
+        Returns:
+            sym.MutableDenseNDimArray: The Jaumann rate contribution (4th order tensor).
+        """
+        # Ensure sigma is a 3x3 matrix
+        if sigma.shape != (3, 3):
+            raise ValueError("Wrongshape")
+
+        # Use list comprehension to build the 4th-order tensor directly
+        return sym.MutableDenseNDimArray(
+            [
+                [
+                    [
+                        [
+                            (1 / 2)
+                            * (
+                                int(i == k) * sigma[j, ll]
+                                + sigma[i, k] * int(j == ll)
+                                + int(i == ll) * sigma[j, k]
+                                + sigma[i, ll] * int(j == k)
+                            )
+                            for ll in range(3)
+                        ]
+                        for k in range(3)
+                    ]
+                    for j in range(3)
+                ]
+                for i in range(3)
+            ]
+        )
