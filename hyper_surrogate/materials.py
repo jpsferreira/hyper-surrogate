@@ -70,6 +70,14 @@ class Material(SymbolicHandler):
         """Material stiffness tensor generator of numerical form."""
         return self.lambdify(self.cmat_symb, *self.parameters)
 
+    def sigma(self, f: sym.Matrix) -> Any:
+        """Cauchy stress tensor generator of numerical form."""
+        return self.lambdify(self.sigma_symb(f), *self.parameters)
+
+    def smat(self, f: sym.Matrix) -> Any:
+        """Material stiffness tensor generator of numerical form."""
+        return self.lambdify(self.smat_symb(f), *self.parameters)
+
 
 class NeoHooke(Material):
     """

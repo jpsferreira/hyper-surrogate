@@ -20,7 +20,7 @@ class Kinematics:
         Compute the Jacobian of the deformation gradient.
 
         Args:
-            F: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3, 3).
 
         Returns:
             np.ndarray: The Jacobian of the deformation gradient.
