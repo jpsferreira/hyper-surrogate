@@ -300,7 +300,7 @@ class SymbolicHandler:
         ])
 
     @staticmethod
-    def jaumann_rate_mat(sigma: sym.Matrix) -> sym.MutableDenseNDimArray:
+    def jr(sigma: sym.Matrix) -> sym.MutableDenseNDimArray:
         """
         Compute the Jaumann rate contribution for the spatial elasticity tensor.
 

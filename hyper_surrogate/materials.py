@@ -50,12 +50,17 @@ class Material(SymbolicHandler):
         """Material stiffness tensor in spatial form."""
         return self.pushforward_4th_order(self.cmat_symb, f)
 
+    def jr_symb(self, f: sym.Matrix) -> Any:
+        return self.jr(self.sigma_symb(f))
+
     def cauchy(self, f: sym.Matrix) -> Any:
         return self.reduce_2nd_order(self.sigma_symb(f))
 
-    def tangent(self, f: sym.Matrix) -> Any:
-        # TODO:        # implement jaumman_rate_mat
-        return self.reduce_4th_order(self.smat_symb(f))
+    def tangent(self, f: sym.Matrix, use_jaumann_rate: bool = False) -> Any:
+        tangent = self.smat_symb(f)
+        if use_jaumann_rate:
+            tangent += self.jr_symb(f)
+        return self.reduce_4th_order(tangent)
 
     def pk2(self) -> Any:
         """Second Piola-Kirchhoff stress tensor generator of numerical form."""

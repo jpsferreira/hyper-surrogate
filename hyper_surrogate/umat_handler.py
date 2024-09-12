@@ -112,7 +112,7 @@ class UMATHandler:
         Generate the symbolic expression for the tangent matrix.
         """
         logging.info("Generating tangent matrix...")
-        return self.material.tangent(self.f).subs(self.sub_exp)
+        return self.material.tangent(self.f, use_jaumann_rate=True).subs(self.sub_exp)
 
     def generate_expression(self, tensor: Any, var_name: str) -> Any:
         logging.info(f"Generating CSE for {var_name}...")
