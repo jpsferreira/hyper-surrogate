@@ -61,6 +61,7 @@ jobs:
         if: ${{ matrix.python-version == '3.11' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
 
   check-docs:
     runs-on: ubuntu-latest
