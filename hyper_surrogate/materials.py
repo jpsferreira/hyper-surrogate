@@ -53,10 +53,10 @@ class Material(SymbolicHandler):
     def jr_symb(self, f: sym.Matrix) -> Any:
         return self.jr(self.sigma_symb(f))
 
-    def cauchy(self, f: sym.Matrix) -> Any:
+    def cauchy(self, f: sym.Matrix) -> sym.Matrix:
         return self.reduce_2nd_order(self.sigma_symb(f))
 
-    def tangent(self, f: sym.Matrix, use_jaumann_rate: bool = False) -> Any:
+    def tangent(self, f: sym.Matrix, use_jaumann_rate: bool = False) -> sym.Matrix:
         tangent = self.smat_symb(f)
         if use_jaumann_rate:
             tangent += self.jr_symb(f)

@@ -1,7 +1,7 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import sympy as sym
 
@@ -19,7 +19,7 @@ class UMATHandler:
         self.smat_code = None
 
     @staticmethod
-    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
+    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> List[str]:
         """
         Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
@@ -99,7 +99,7 @@ class UMATHandler:
         self.write_umat_code(sigma_code_str, smat_code_str, filename)
 
     @property
-    def cauchy(self) -> Any:
+    def cauchy(self) -> sym.Matrix:
         """
         Generate the symbolic expression for the Cauchy stress tensor.
         """
@@ -107,7 +107,7 @@ class UMATHandler:
         return self.material.cauchy(self.f).subs(self.sub_exp)
 
     @property
-    def tangent(self) -> Any:
+    def tangent(self) -> sym.Matrix:
         """
         Generate the symbolic expression for the tangent matrix.
         """

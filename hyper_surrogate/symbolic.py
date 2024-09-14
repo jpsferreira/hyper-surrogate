@@ -221,7 +221,7 @@ class SymbolicHandler:
         ])
 
     @staticmethod
-    def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> Any:
+    def reduce_4th_order(tensor: sym.MutableDenseNDimArray) -> sym.Matrix:
         """
         Convert a 3x3x3x3 matrix to 6x6 matrix using Voigt notation
 
