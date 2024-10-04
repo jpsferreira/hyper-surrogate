@@ -83,7 +83,7 @@ def test_symbolic_subs_in_c(handler):
     # substitute the c_tensor with a 3x3 matrix of ones
     c_tensor = handler.c_tensor
     # dummy c values
-    c = np.ones((3, 3))
+    c = np.ones((3, 3), dtype=int)
     # subs c_tensor with c values
     # c_tensor_subs = handler.c_tensor.subs({c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)})
     c_tensor_subs = handler.substitute(c_tensor, c)
@@ -120,7 +120,7 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
 
 def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     # pk2 function
-    pk2_func = handler.lambdify(pk2, *sef_args.keys())
+    pk2_func = handler.lambda_function(pk2, *sef_args.keys())
     pk2_values = np.array(list(handler.evaluate_iterator(pk2_func, right_cauchys, *sef_args.values())))
     assert all(isinstance(pk2_value, np.ndarray) for pk2_value in pk2_values)
     assert all(pk2_value.shape == (3, 3) for pk2_value in pk2_values)
@@ -129,7 +129,7 @@ def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
 
 def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
     # cmat function
-    cmat_func = handler.lambdify(cmat, *sef_args.keys())
+    cmat_func = handler.lambda_function(cmat, *sef_args.keys())
     cmat_values = np.array(list(handler.evaluate_iterator(cmat_func, right_cauchys, *sef_args.values())))
     assert cmat_values.shape == (SIZE, 3, 3, 3, 3)
     assert all(isinstance(cmat_value, np.ndarray) for cmat_value in cmat_values)

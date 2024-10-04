@@ -1,6 +1,6 @@
 from typing import Any, Iterable
 
-import sympy as sym
+from sympy import Expr, ImmutableDenseNDimArray, Matrix, MutableDenseNDimArray, Symbol
 
 from hyper_surrogate.symbolic import SymbolicHandler
 
@@ -11,52 +11,55 @@ class Material(SymbolicHandler):
     The class is inherited from the SymbolicHandler class and provides
     the necessary methods to define the constitutive model in symbolic form.
 
-    args:
-    parameters: Iterable[Any] - The material parameters as a list of strings
+    Args:
+        parameters: Iterable[Any] - The material parameters as a list of strings
 
-    properties:
-    sef: The strain energy function in symbolic form
+    Properties:
+        sef: The strain energy function in symbolic form
 
-    methods:
-    pk2() -> Any: Returns the second Piola-Kirchhoff stress tensor
-    cmat() -> Any: Returns the material stiffness tensor
+    Methods:
+        pk2() -> Callable[..., Any]: Returns the second Piola-Kirchhoff stress tensor
+        cmat() -> Callable[..., Any]: Returns the material stiffness tensor
     """
 
-    def __init__(self, parameters: Iterable[Any]) -> None:
+    def __init__(self, parameters: Iterable[str]) -> None:
         super().__init__()
         self.parameters = parameters
 
     @property
-    def sef(self) -> Any:
+    def sef(self) -> Expr:
         """Strain energy function in symbolic form."""
         # Dummy placeholder
-        return sym.Symbol("sef")
+        return Symbol("sef")
 
     @property
-    def pk2_symb(self) -> Any:
+    def pk2_symb(self) -> Matrix:
         """Second Piola-Kirchhoff stress tensor in symbolic form."""
         return self.pk2_tensor(self.sef)
 
     @property
-    def cmat_symb(self) -> Any:
+    def cmat_symb(self) -> ImmutableDenseNDimArray:
         """Material stiffness tensor in symbolic form."""
         return self.cmat_tensor(self.pk2_symb)
 
-    def sigma_symb(self, f: sym.Matrix) -> Any:
+    def sigma_symb(self, f: Matrix) -> Matrix:
         """Cauchy stress tensor in symbolic form."""
         return self.pushforward_2nd_order(self.pk2_symb, f)
 
-    def smat_symb(self, f: sym.Matrix) -> Any:
+    def smat_symb(self, f: Matrix) -> MutableDenseNDimArray:
         """Material stiffness tensor in spatial form."""
         return self.pushforward_4th_order(self.cmat_symb, f)
 
-    def jr_symb(self, f: sym.Matrix) -> Any:
+    def jr_symb(self, f: Matrix) -> Matrix:
+        """Jaumann rate contribution to the tangent tensor in symbolic form."""
         return self.jr(self.sigma_symb(f))
 
-    def cauchy(self, f: sym.Matrix) -> sym.Matrix:
+    def cauchy(self, f: Matrix) -> Matrix:
+        """Reduce Cauchy stress tensor to 6x1 matrix using Voigt notation."""
         return self.reduce_2nd_order(self.sigma_symb(f))
 
-    def tangent(self, f: sym.Matrix, use_jaumann_rate: bool = False) -> sym.Matrix:
+    def tangent(self, f: Matrix, use_jaumann_rate: bool = False) -> Matrix:
+        """Reduce tangent tensor to 6x6 matrix using Voigt notation."""
         tangent = self.smat_symb(f)
         if use_jaumann_rate:
             tangent += self.jr_symb(f)
@@ -64,19 +67,19 @@ class Material(SymbolicHandler):
 
     def pk2(self) -> Any:
         """Second Piola-Kirchhoff stress tensor generator of numerical form."""
-        return self.lambdify(self.pk2_symb, *self.parameters)
+        return self.lambda_function(self.pk2_symb, *self.parameters)
 
     def cmat(self) -> Any:
         """Material stiffness tensor generator of numerical form."""
-        return self.lambdify(self.cmat_symb, *self.parameters)
+        return self.lambda_function(self.cmat_symb, *self.parameters)
 
-    def sigma(self, f: sym.Matrix) -> Any:
+    def sigma(self, f: Matrix) -> Any:
         """Cauchy stress tensor generator of numerical form."""
-        return self.lambdify(self.sigma_symb(f), *self.parameters)
+        return self.lambda_function(self.sigma_symb(f), *self.parameters)
 
-    def smat(self, f: sym.Matrix) -> Any:
+    def smat(self, f: Matrix) -> Any:
         """Material stiffness tensor generator of numerical form."""
-        return self.lambdify(self.smat_symb(f), *self.parameters)
+        return self.lambda_function(self.smat_symb(f), *self.parameters)
 
 
 class NeoHooke(Material):
@@ -85,8 +88,8 @@ class NeoHooke(Material):
     The class inherits from the Material class and provides the necessary
     methods to define the Neo-Hookean model in symbolic form.
 
-    properties:
-    sef: The strain energy function in symbolic form
+    Properties:
+        sef: The strain energy function in symbolic form
     """
 
     def __init__(self) -> None:
@@ -94,8 +97,8 @@ class NeoHooke(Material):
         super().__init__(params)
 
     @property
-    def sef(self) -> Any:
-        return (self.invariant1 - 3) * sym.Symbol("C10")
+    def sef(self) -> Expr:
+        return (self.invariant1 - 3) * Symbol("C10")
 
 
 class MooneyRivlin(Material):
@@ -104,8 +107,8 @@ class MooneyRivlin(Material):
     The class inherits from the Material class and provides the necessary
     methods to define the Mooney-Rivlin model in symbolic form.
 
-    properties:
-    sef: The strain energy function in symbolic form
+    Properties:
+        sef: The strain energy function in symbolic form
     """
 
     def __init__(self) -> None:
@@ -113,5 +116,5 @@ class MooneyRivlin(Material):
         super().__init__(params)
 
     @property
-    def sef(self) -> Any:
-        return (self.invariant1 - 3) * sym.Symbol("C10") + (self.invariant2 - 3) * sym.Symbol("C01")
+    def sef(self) -> Expr:
+        return (self.invariant1 - 3) * Symbol("C10") + (self.invariant2 - 3) * Symbol("C01")

@@ -1,13 +1,15 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 import sympy as sym
 
+from hyper_surrogate.materials import Material
+
 
 class UMATHandler:
-    def __init__(self, material_model: Any) -> None:
+    def __init__(self, material_model: Material) -> None:
         """
         Initialize the UMAT handler with a specific material model.
 
@@ -114,7 +116,7 @@ class UMATHandler:
         logging.info("Generating tangent matrix...")
         return self.material.tangent(self.f, use_jaumann_rate=True).subs(self.sub_exp)
 
-    def generate_expression(self, tensor: Any, var_name: str) -> Any:
+    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> List[str]:
         logging.info(f"Generating CSE for {var_name}...")
         return self.common_subexpressions(tensor, var_name)
 

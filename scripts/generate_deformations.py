@@ -69,8 +69,6 @@ if __name__ == "__main__":
     c = K.right_cauchy_green(f)
     # first invariant
     I1 = K.invariant2(c)
-    print(c)
-    print(I1)
 
     # report pdf to output_path name
     reporter = Reporter(c, args.output_path.parent)
