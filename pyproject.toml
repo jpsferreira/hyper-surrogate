@@ -17,9 +17,6 @@ sympy = "^1.12"
 matplotlib = "^3.8.3"
 seaborn = "^0.13.2"
 tqdm = "^4.66.5"
-mkdocstrings = "^0.26.1"
-mkdocs = "^1.6.1"
-mkdocstrings-python = "^1.11.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
@@ -34,6 +31,9 @@ types-seaborn = "^0.13.2.20240311"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = "^9.2.7"
+mkdocstrings = "^0.26.1"
+mkdocs = "^1.6.1"
+mkdocstrings-python = "^1.11.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
