@@ -67,19 +67,19 @@ class Material(SymbolicHandler):
 
     def pk2(self) -> Any:
         """Second Piola-Kirchhoff stress tensor generator of numerical form."""
-        return self.lambda_function(self.pk2_symb, *self.parameters)
+        return self.lambda_tensor(self.pk2_symb, *self.parameters)
 
     def cmat(self) -> Any:
         """Material stiffness tensor generator of numerical form."""
-        return self.lambda_function(self.cmat_symb, *self.parameters)
+        return self.lambda_tensor(self.cmat_symb, *self.parameters)
 
     def sigma(self, f: Matrix) -> Any:
         """Cauchy stress tensor generator of numerical form."""
-        return self.lambda_function(self.sigma_symb(f), *self.parameters)
+        return self.lambda_tensor(self.sigma_symb(f), *self.parameters)
 
     def smat(self, f: Matrix) -> Any:
         """Material stiffness tensor generator of numerical form."""
-        return self.lambda_function(self.smat_symb(f), *self.parameters)
+        return self.lambda_tensor(self.smat_symb(f), *self.parameters)
 
 
 class NeoHooke(Material):

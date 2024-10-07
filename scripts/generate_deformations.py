@@ -68,18 +68,18 @@ if __name__ == "__main__":
     logging.info(f"Generated {args.batch_size} deformation gradients.")
     c = K.right_cauchy_green(f)
     # first invariant
-    I1 = K.invariant2(c)
+    I1 = K.invariant1(c)
 
     # report pdf to output_path name
     reporter = Reporter(c, args.output_path.parent)
     reporter.create_report()
 
     if "pk2" in args.tensors:
-        pk2_func_iterator = material.evaluate_iterator(material.pk2(), c, args.batch_size)
+        pk2_func_iterator = material.evaluate_iterator(material.pk2(), c, 1)
         results["pk2"] = np.array(list(pk2_func_iterator))
         logging.info(f"Generated {args.batch_size} pk2 tensors.")
     if "cmat" in args.tensors:
-        cmat_func_iterator = material.evaluate_iterator(material.cmat(), c, args.batch_size)
+        cmat_func_iterator = material.evaluate_iterator(material.cmat(), c, 1)
         results["cmat"] = np.array(list(cmat_func_iterator))
         logging.info(f"Generated {args.batch_size} cmat tensors.")
 

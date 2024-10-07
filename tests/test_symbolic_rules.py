@@ -120,7 +120,7 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
 
 def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     # pk2 function
-    pk2_func = handler.lambda_function(pk2, *sef_args.keys())
+    pk2_func = handler.lambda_tensor(pk2, *sef_args.keys())
     pk2_values = np.array(list(handler.evaluate_iterator(pk2_func, right_cauchys, *sef_args.values())))
     assert all(isinstance(pk2_value, np.ndarray) for pk2_value in pk2_values)
     assert all(pk2_value.shape == (3, 3) for pk2_value in pk2_values)
@@ -129,7 +129,7 @@ def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
 
 def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
     # cmat function
-    cmat_func = handler.lambda_function(cmat, *sef_args.keys())
+    cmat_func = handler.lambda_tensor(cmat, *sef_args.keys())
     cmat_values = np.array(list(handler.evaluate_iterator(cmat_func, right_cauchys, *sef_args.values())))
     assert cmat_values.shape == (SIZE, 3, 3, 3, 3)
     assert all(isinstance(cmat_value, np.ndarray) for cmat_value in cmat_values)

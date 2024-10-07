@@ -26,6 +26,25 @@ class SymbolicHandler:
 
     def __init__(self) -> None:
         self.c_tensor = self._c_tensor()
+        self.f_tensor = self._f_tensor()
+
+    def f_symbols(self) -> List[Symbol]:
+        """
+        Return the f_tensor flattened symbols.
+
+        Returns:
+            list: A list of f_tensor symbols.
+        """
+        return [self.f_tensor[i, j] for i in range(3) for j in range(3)]
+
+    def _f_tensor(self) -> ImmutableMatrix:
+        """
+        Create a 3x3 matrix of symbols.
+
+        Returns:
+            Matrix: A 3x3 matrix of symbols.
+        """
+        return ImmutableMatrix(3, 3, lambda i, j: Symbol(f"F_{i + 1}{j + 1}"))
 
     def c_symbols(self) -> List[Symbol]:
         """
@@ -168,7 +187,7 @@ class SymbolicHandler:
         for numerical_c_tensor in numerical_c_tensors:
             yield self.substitute(symbolic_tensor, numerical_c_tensor, *args)
 
-    def lambda_function(self, symbolic_tensor: Matrix, *args: Iterable[Any]) -> Any:
+    def lambda_tensor(self, symbolic_tensor: Matrix, *args: Iterable[Any]) -> Any:
         """
         Create a lambdified function from a symbolic tensor that can be used for numerical evaluation.
 
@@ -209,6 +228,24 @@ class SymbolicHandler:
         """
         for numerical_c_tensor in numerical_c_tensors:
             yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
+
+    def evaluate_expr(
+        self, symbolic_expr: Any, numerical_c_tensors: np.ndarray, *args: Any
+    ) -> Generator[Any, None, None]:
+        """
+        Evaluate a lambdified tensor with specific values.
+
+        Args:
+            symbolic_expr (function):
+            args (dict): Additional substitution lists of symbols.
+
+        Returns:
+            Generator[Any, None, None]: The evaluated tensor.
+        """
+        # Lambdify the symbolic tensor once
+        lambdified_tensor = lambdify(self.c_symbols(), symbolic_expr, modules="numpy")
+        for numerical_c_tensor in numerical_c_tensors:
+            yield lambdified_tensor(*numerical_c_tensor.flatten(), *args)
 
     @staticmethod
     def reduce_2nd_order(tensor: Matrix) -> Matrix:
