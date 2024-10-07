@@ -38,17 +38,17 @@ def test_sef(neohooke):
     assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10")
 
 
-# def test_lambdify_sef(neohooke, c_tensor):
-#     sef_func = neohooke.evaluate_expr(neohooke.sef, c_tensor, 1.0)
-#     sef_values = np.array(list(sef_func))
-#     assert sef_values.shape == (2,)
-#     assert sef_values[0] == 0
-#     assert sef_values[1] > 0
+def test_lambdify_sef(neohooke, c_tensor):
+    sef_func = neohooke.substitute_iterator(neohooke.sef, c_tensor, {"C10": 1})
+    sef_values = np.array(list(sef_func))
+    assert sef_values.shape == (2,)
+    assert sef_values[0] == 0
+    assert sef_values[1] > 0
 
 
 def test_lambdify_pk2(neohooke, c_tensor):
     # logging.info(neohooke.pk2_symb)
-    pk2_func = neohooke.evaluate_iterator(neohooke.pk2(), c_tensor, 2)
+    pk2_func = neohooke.evaluate_iterator(neohooke.pk2(), c_tensor, 1)
     pk2_values = np.array(list(pk2_func))
     assert pk2_values.shape == (2, 3, 3)
 
