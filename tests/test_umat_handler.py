@@ -28,17 +28,21 @@ def test_initialize_with_valid_material(umat_handler, material):
     assert isinstance(umat_handler.material, Material)
 
 
-def test_generate_umat_code():
+def test_generate_umat_code(tmp_path):
     # Setup
     material_model = Material(["param1", "param2"])
     umat_handler = UMATHandler(material_model)
-    filename = Path("test_umat_code.f")
-
+    
+    # Create a temporary file in the temporary directory
+    filename = tmp_path / "umat.f"
     # Exercise
     umat_handler.generate(filename)
-
     # Verify
     assert filename.is_file()
+    # assert that the file is not empty
+    assert filename.stat().st_size > 0
+    # assert that the file is a Fortran file
+    assert filename.suffix == ".f"
 
 
 def test_common_subexpressions_with_empty_tensor(umat_handler):
