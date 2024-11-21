@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 import sympy as sym
 
@@ -32,7 +30,7 @@ def test_generate_umat_code(tmp_path):
     # Setup
     material_model = Material(["param1", "param2"])
     umat_handler = UMATHandler(material_model)
-    
+
     # Create a temporary file in the temporary directory
     filename = tmp_path / "umat.f"
     # Exercise
