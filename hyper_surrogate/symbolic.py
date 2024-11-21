@@ -3,7 +3,6 @@ from typing import Any, Generator, Iterable, List
 import numpy as np
 from sympy import (
     Expr,
-    ImmutableDenseNDimArray,
     ImmutableMatrix,
     Matrix,
     MutableDenseMatrix,
@@ -118,9 +117,9 @@ class SymbolicHandler:
         Returns:
             Matrix: The pk2 tensor.
         """
-        return Matrix([[diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
+        return Matrix([[2 * diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
 
-    def cmat_tensor(self, pk2: Matrix) -> ImmutableDenseNDimArray:
+    def cmat_tensor(self, pk2: Matrix) -> MutableDenseNDimArray:
         """
         Compute the cmat tensor.
 
@@ -130,8 +129,8 @@ class SymbolicHandler:
         Returns:
             MutableDenseNDimArray: The cmat tensor.
         """
-        return ImmutableDenseNDimArray([
-            [[[diff(2 * pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
+        return MutableDenseNDimArray([
+            [[[diff(pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
             for i in range(3)
         ])
 
@@ -228,24 +227,6 @@ class SymbolicHandler:
         """
         for numerical_c_tensor in numerical_c_tensors:
             yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
-
-    def evaluate_expr(
-        self, symbolic_expr: Any, numerical_c_tensors: np.ndarray, *args: Any
-    ) -> Generator[Any, None, None]:
-        """
-        Evaluate a lambdified tensor with specific values.
-
-        Args:
-            symbolic_expr (function):
-            args (dict): Additional substitution lists of symbols.
-
-        Returns:
-            Generator[Any, None, None]: The evaluated tensor.
-        """
-        # Lambdify the symbolic tensor once
-        lambdified_tensor = lambdify(self.c_symbols(), symbolic_expr, modules="numpy")
-        for numerical_c_tensor in numerical_c_tensors:
-            yield lambdified_tensor(*numerical_c_tensor.flatten(), *args)
 
     @staticmethod
     def reduce_2nd_order(tensor: Matrix) -> Matrix:
