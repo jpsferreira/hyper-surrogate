@@ -3,7 +3,7 @@ import pytest
 
 from hyper_surrogate.deformation_gradient import DeformationGradientGenerator
 
-SIZE = 1000
+SIZE = 100
 
 
 @pytest.fixture

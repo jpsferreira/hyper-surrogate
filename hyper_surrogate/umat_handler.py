@@ -1,13 +1,15 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import Any
+from typing import List
 
 import sympy as sym
 
+from hyper_surrogate.materials import Material
+
 
 class UMATHandler:
-    def __init__(self, material_model: Any) -> None:
+    def __init__(self, material_model: Material) -> None:
         """
         Initialize the UMAT handler with a specific material model.
 
@@ -19,7 +21,7 @@ class UMATHandler:
         self.smat_code = None
 
     @staticmethod
-    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> Any:
+    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> List[str]:
         """
         Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
@@ -99,7 +101,7 @@ class UMATHandler:
         self.write_umat_code(sigma_code_str, smat_code_str, filename)
 
     @property
-    def cauchy(self) -> Any:
+    def cauchy(self) -> sym.Matrix:
         """
         Generate the symbolic expression for the Cauchy stress tensor.
         """
@@ -107,14 +109,14 @@ class UMATHandler:
         return self.material.cauchy(self.f).subs(self.sub_exp)
 
     @property
-    def tangent(self) -> Any:
+    def tangent(self) -> sym.Matrix:
         """
         Generate the symbolic expression for the tangent matrix.
         """
         logging.info("Generating tangent matrix...")
         return self.material.tangent(self.f, use_jaumann_rate=True).subs(self.sub_exp)
 
-    def generate_expression(self, tensor: Any, var_name: str) -> Any:
+    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> List[str]:
         logging.info(f"Generating CSE for {var_name}...")
         return self.common_subexpressions(tensor, var_name)
 

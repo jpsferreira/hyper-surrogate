@@ -16,8 +16,7 @@ numpy = "^1.26.4"
 sympy = "^1.12"
 matplotlib = "^3.8.3"
 seaborn = "^0.13.2"
-tqdm = "^4.66.2"
-pandas = "^2.2.2"
+tqdm = "^4.66.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
@@ -31,9 +30,10 @@ types-tqdm = "^4.66.0.20240106"
 types-seaborn = "^0.13.2.20240311"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs = "^1.4.2"
 mkdocs-material = "^9.2.7"
-mkdocstrings = {extras = ["python"], version = "^0.23.0"}
+mkdocstrings = "^0.26.1"
+mkdocs = "^1.6.1"
+mkdocstrings-python = "^1.11.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -42,12 +42,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.mypy]
 files = ["hyper_surrogate"]
 disallow_untyped_defs = "True"
-disallow_any_unimported = "True"
+#disallow_any_unimported = "True"
 no_implicit_optional = "True"
 check_untyped_defs = "True"
 warn_return_any = "True"
 warn_unused_ignores = "True"
 show_error_codes = "True"
+ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -5,7 +5,6 @@ from typing import ClassVar
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 # import pandas as pd
 import seaborn as sns
@@ -21,7 +20,7 @@ class Reporter:
     """
     Generate a PDF report from batches of tensors.
 
-    It provides various methods to create different types of visualizations and tables based on the parsed data.
+    It provides various methods to create different types of visualizations and tables.
 
     """
 
@@ -72,26 +71,6 @@ class Reporter:
         plt.title("Histogram of Determinants")
         plt.xlabel("Determinant")
         plt.ylabel("Frequency")
-        return [fig]
-
-    @staticmethod
-    def tablefig(
-        df: pd.DataFrame,
-        figsize: tuple = (8.27, 11.69),
-        location: str = "center left",
-        title: str = "Title",
-    ) -> list[matplotlib.figure.Figure]:
-        """Create a table figure using the provided DataFrame and displays it using Matplotlib."""
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.table(
-            cellText=df.values,
-            colLabels=df.columns,
-            loc=location,
-            rowLabels=df.index,
-        )
-
-        ax.axis("off")
-        ax.set_title(title)
         return [fig]
 
     def generate_figures(self) -> list[matplotlib.figure.Figure]:
