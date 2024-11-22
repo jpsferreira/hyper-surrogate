@@ -220,14 +220,3 @@ END SUBROUTINE umat
         with open(filename, "w") as file:
             file.write(umat_code)
         logging.info(f"UMAT subroutine written to {filename}")
-
-    # def generate(self, filename: str):
-    #     """
-    #     Generate the UMAT code for the material model and write it to a file.
-
-    #     Args:
-    #         filename (str): The file path where the UMAT code will be written.
-    #     """
-    #     self.sigma_code = self.generate_expression(self.cauchy_stress, "STRESS")
-    #     self.smat_code = self.generate_expression(self.tangent_matrix, "DDSDDE")
-    #     self.write_umat_code(filename)
