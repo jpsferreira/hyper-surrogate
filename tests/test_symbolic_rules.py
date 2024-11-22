@@ -67,7 +67,7 @@ def test_symbolic_pk2_cmat(pk2, cmat):
 
     # assert instance
     assert isinstance(pk2, sym.Matrix)
-    assert isinstance(cmat, sym.ImmutableDenseNDimArray)
+    assert isinstance(cmat, sym.MutableDenseNDimArray)
     # assert shape
     assert pk2.shape == (3, 3)
     assert cmat.shape == (3, 3, 3, 3)
@@ -105,7 +105,7 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
     # right_cauchys # (N, 3, 3)
     # for each c_tensor in cmat, substitute the cmat tensor with c values and material parameters values.
     assert all(
-        isinstance(subs, sym.ImmutableDenseNDimArray)
+        isinstance(subs, sym.MutableDenseNDimArray)
         and subs.shape == (3, 3, 3, 3)
         and all(
             isinstance(subs[i, j, k, ll], sym.Expr)

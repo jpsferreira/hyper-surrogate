@@ -117,7 +117,9 @@ class SymbolicHandler:
         Returns:
             Matrix: The pk2 tensor.
         """
-        return Matrix([[2 * diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
+        pk2 = Matrix([[diff(sef, self.c_tensor[i, j]) for j in range(3)] for i in range(3)])
+        # force symmetry
+        return pk2 + pk2.T
 
     def cmat_tensor(self, pk2: Matrix) -> MutableDenseNDimArray:
         """
@@ -127,10 +129,19 @@ class SymbolicHandler:
             pk2 (Matrix): The pk2 tensor.
 
         Returns:
-            MutableDenseNDimArray: The cmat tensor.
+            MutableDenseNDimArray: The stiffness tensor (3x3x3x3) with minor symmetry.
         """
         return MutableDenseNDimArray([
-            [[[diff(pk2[i, j], self.c_tensor[k, ll]) for ll in range(3)] for k in range(3)] for j in range(3)]
+            [
+                [
+                    [
+                        (diff(pk2[i, j], self.c_tensor[k, ll]) + diff(pk2[i, j], self.c_tensor[ll, k])) / 2
+                        for ll in range(3)
+                    ]
+                    for k in range(3)
+                ]
+                for j in range(3)
+            ]
             for i in range(3)
         ])
 

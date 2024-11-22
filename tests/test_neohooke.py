@@ -48,6 +48,39 @@ def c_tensor(f):
     return K.right_cauchy_green(f)
 
 
+@pytest.fixture
+def cmat_iso0():
+    # Initialize a 4D tensor of size 3x3x3x3
+    tensor = np.zeros((3, 3, 3, 3))
+
+    # Populate the tensor with the provided values
+    tensor[0, 0, 0, 0] = 2.6666666666666661
+    tensor[0, 0, 1, 1] = -1.3333333333333335
+    tensor[0, 0, 2, 2] = -1.3333333333333335
+    tensor[0, 1, 0, 1] = 2.0
+    tensor[0, 1, 1, 0] = 2.0
+    tensor[0, 2, 0, 2] = 2.0
+    tensor[0, 2, 2, 0] = 2.0
+
+    tensor[1, 0, 0, 1] = 2.0
+    tensor[1, 0, 1, 0] = 2.0
+    tensor[1, 1, 0, 0] = -1.3333333333333335
+    tensor[1, 1, 1, 1] = 2.6666666666666661
+    tensor[1, 1, 2, 2] = -1.3333333333333335
+    tensor[1, 2, 1, 2] = 2.0
+    tensor[1, 2, 2, 1] = 2.0
+
+    tensor[2, 0, 0, 2] = 2.0
+    tensor[2, 0, 2, 0] = 2.0
+    tensor[2, 1, 1, 2] = 2.0
+    tensor[2, 1, 2, 1] = 2.0
+    tensor[2, 2, 0, 0] = -1.3333333333333335
+    tensor[2, 2, 1, 1] = -1.3333333333333335
+    tensor[2, 2, 2, 2] = 2.6666666666666661
+
+    return tensor
+
+
 def test_sef(neohooke):
     assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10")
 
@@ -57,7 +90,7 @@ def test_lambdify_sef(neohooke, c_tensor):
     sef_values = np.array(list(sef_func))
     assert sef_values.shape == (4,)
     assert sef_values[0] == 0
-    # all remaining values should be positive
+    # all remaining values of SEF should be positive
     assert sef_values[1:].all() > 0
 
 
@@ -68,6 +101,7 @@ def test_lambdify_pk2(neohooke, c_tensor):
     assert pk2_values.shape == (4, 3, 3)
     # no deformation
     assert np.allclose(pk2_values[0], 0)
+    logging.info(c_tensor[1])
     # uniaxial stretch 3 at x-axis
     assert np.allclose(
         pk2_values[1],
@@ -97,15 +131,19 @@ def test_lambdify_pk2(neohooke, c_tensor):
     )
 
 
-def test_lambdify_cmat(neohooke, c_tensor):
+def test_lambdify_cmat(neohooke, c_tensor, cmat_iso0):
     cmat_func = neohooke.evaluate_iterator(neohooke.cmat(), c_tensor, 1)
+    logging.info(cmat_func)
     cmat_values = np.array(list(cmat_func))
     assert cmat_values.shape == (4, 3, 3, 3, 3)
+    assert np.allclose(cmat_values[0], cmat_iso0)
+    # uniaxial stretch 3 at x-axis
+    # assert np.allclose(
+
     # uniaxial stretch 3 at x-axis
     # random deformation
     # random deformation2 has the following 81 values:
-    logging.info(c_tensor[0])
-    logging.info(cmat_values[0])
+    # plot cmat_values
 
 
 #     assert np.allclose(
