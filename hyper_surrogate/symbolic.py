@@ -134,10 +134,7 @@ class SymbolicHandler:
         return MutableDenseNDimArray([
             [
                 [
-                    [
-                        (diff(pk2[i, j], self.c_tensor[k, ll]) + diff(pk2[i, j], self.c_tensor[ll, k])) / 2
-                        for ll in range(3)
-                    ]
+                    [(diff(pk2[i, j], self.c_tensor[k, ll]) + diff(pk2[i, j], self.c_tensor[ll, k])) for ll in range(3)]
                     for k in range(3)
                 ]
                 for j in range(3)
