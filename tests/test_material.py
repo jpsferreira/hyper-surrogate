@@ -75,7 +75,7 @@ def test_cmat_symbol(material):
     assert material.cmat_symb.shape == (3, 3, 3, 3)
     assert material.cmat_symb.shape == material.cmat_tensor(material.pk2_symb).shape
     assert material.cmat_symb == material.cmat_tensor(material.pk2_symb)
-    assert material.cmat_symb == sym.MutableDenseNDimArray(np.zeros((3, 3, 3, 3), dtype=int))
+    assert material.cmat_symb == sym.ImmutableDenseNDimArray(np.zeros((3, 3, 3, 3), dtype=int))
 
 
 def test_mooneyrivlin_sef():

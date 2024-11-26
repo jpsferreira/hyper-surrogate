@@ -1,6 +1,12 @@
 from typing import Any, Iterable
 
-from sympy import Expr, ImmutableDenseNDimArray, Matrix, MutableDenseNDimArray, Symbol
+from sympy import (
+    Expr,
+    ImmutableDenseNDimArray,
+    Matrix,
+    Symbol,
+    log,
+)
 
 from hyper_surrogate.symbolic import SymbolicHandler
 
@@ -46,24 +52,13 @@ class Material(SymbolicHandler):
         """Cauchy stress tensor in symbolic form."""
         return self.pushforward_2nd_order(self.pk2_symb, f)
 
-    def smat_symb(self, f: Matrix) -> MutableDenseNDimArray:
+    def smat_symb(self, f: Matrix) -> Matrix:
         """Material stiffness tensor in spatial form."""
         return self.pushforward_4th_order(self.cmat_symb, f)
 
     def jr_symb(self, f: Matrix) -> Matrix:
         """Jaumann rate contribution to the tangent tensor in symbolic form."""
         return self.jr(self.sigma_symb(f))
-
-    def cauchy(self, f: Matrix) -> Matrix:
-        """Reduce Cauchy stress tensor to 6x1 matrix using Voigt notation."""
-        return self.reduce_2nd_order(self.sigma_symb(f))
-
-    def tangent(self, f: Matrix, use_jaumann_rate: bool = False) -> Matrix:
-        """Reduce tangent tensor to 6x6 matrix using Voigt notation."""
-        tangent = self.smat_symb(f)
-        if use_jaumann_rate:
-            tangent += self.jr_symb(f)
-        return self.reduce_4th_order(tangent)
 
     def pk2(self) -> Any:
         """Second Piola-Kirchhoff stress tensor generator of numerical form."""
@@ -81,6 +76,18 @@ class Material(SymbolicHandler):
         """Material stiffness tensor generator of numerical form."""
         return self.lambda_tensor(self.smat_symb(f), *self.parameters)
 
+    # VOIGT NOTATION handlers
+    def cauchy(self, f: Matrix) -> Matrix:
+        """Reduce Cauchy stress tensor to 6x1 matrix using Voigt notation."""
+        return self.reduce_2nd_order(self.sigma_symb(f))
+
+    def tangent(self, f: Matrix, use_jaumann_rate: bool = False) -> Matrix:
+        """Reduce tangent tensor to 6x6 matrix using Voigt notation."""
+        tangent = self.smat_symb(f)
+        if use_jaumann_rate:
+            tangent += self.jr_symb(f)
+        return self.reduce_4th_order(tangent)
+
 
 class NeoHooke(Material):
     """
@@ -93,12 +100,14 @@ class NeoHooke(Material):
     """
 
     def __init__(self) -> None:
-        params = ["C10"]
+        params = ["C10", "KBULK"]
         super().__init__(params)
 
     @property
     def sef(self) -> Expr:
-        return (self.invariant1 - 3) * Symbol("C10")
+        return (self.invariant1 - 3) * Symbol("C10") + 0.25 * Symbol("KBULK") * (
+            self.invariant3 - 1 - log(self.invariant3)
+        )
 
 
 class MooneyRivlin(Material):

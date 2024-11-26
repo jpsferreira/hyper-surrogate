@@ -296,11 +296,13 @@ def cmat_iso_arbitrary2():
 
 
 def test_sef(neohooke):
-    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10")
+    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10") + 0.25 * sym.Symbol("KBULK") * (
+        neohooke.invariant3 - 1 - sym.log(neohooke.invariant3)
+    )
 
 
 def test_lambdify_sef(neohooke, c_tensor):
-    sef_func = neohooke.substitute_iterator(neohooke.sef, c_tensor, {"C10": 1})
+    sef_func = neohooke.substitute_iterator(neohooke.sef, c_tensor, {"C10": 1, "KBULK": 1})
     sef_values = np.array(list(sef_func))
     assert sef_values.shape == (4,)
     assert sef_values[0] == 0
@@ -310,7 +312,8 @@ def test_lambdify_sef(neohooke, c_tensor):
 
 def test_lambdify_pk2(neohooke, c_tensor):
     # c10=1
-    pk2_func = neohooke.evaluate_iterator(neohooke.pk2(), c_tensor, 1)
+    params = {"C10": 1, "KBULK": 0}
+    pk2_func = neohooke.evaluate_iterator(neohooke.pk2(), c_tensor, **params)
     pk2_values = np.array(list(pk2_func))
     assert pk2_values.shape == (4, 3, 3)
     # no deformation
@@ -345,7 +348,8 @@ def test_lambdify_pk2(neohooke, c_tensor):
 
 
 def test_lambdify_cmat_iso(neohooke, c_tensor, cmat_iso0, cmat_iso_uni, cmat_iso_arbitrary, cmat_iso_arbitrary2):
-    cmat_func = neohooke.evaluate_iterator(neohooke.cmat(), c_tensor, 1)
+    params = {"C10": 1, "KBULK": 0}
+    cmat_func = neohooke.evaluate_iterator(neohooke.cmat(), c_tensor, **params)
     cmat_values = np.array(list(cmat_func))
     assert cmat_values.shape == (4, 3, 3, 3, 3)
     assert np.allclose(cmat_values[0], cmat_iso0)

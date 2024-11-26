@@ -3,10 +3,10 @@ from typing import Any, Generator, Iterable, List
 import numpy as np
 from sympy import (
     Expr,
+    ImmutableDenseNDimArray,
     ImmutableMatrix,
     Matrix,
     MutableDenseMatrix,
-    MutableDenseNDimArray,
     Rational,
     Symbol,
     diff,
@@ -121,7 +121,7 @@ class SymbolicHandler:
         # force symmetry
         return pk2 + pk2.T
 
-    def cmat_tensor(self, pk2: Matrix) -> MutableDenseNDimArray:
+    def cmat_tensor(self, pk2: Matrix) -> ImmutableDenseNDimArray:
         """
         Compute the cmat tensor.
 
@@ -129,9 +129,9 @@ class SymbolicHandler:
             pk2 (Matrix): The pk2 tensor.
 
         Returns:
-            MutableDenseNDimArray: The stiffness tensor (3x3x3x3) with minor symmetry.
+            ImmutableDenseNDimArray: The stiffness tensor (3x3x3x3) with minor symmetry.
         """
-        return MutableDenseNDimArray([
+        return ImmutableDenseNDimArray([
             [
                 [
                     [(diff(pk2[i, j], self.c_tensor[k, ll]) + diff(pk2[i, j], self.c_tensor[ll, k])) for ll in range(3)]
@@ -141,6 +141,32 @@ class SymbolicHandler:
             ]
             for i in range(3)
         ])
+
+    def sigma_tensor(self, sef: Expr, f: Matrix) -> Matrix:
+        """
+        Compute the sigma tensor.
+
+        Args:
+            sef (Expr): The strain energy function.
+            f (Matrix): The deformation gradient tensor.
+
+        Returns:
+            Matrix: The Cauchy stress tensor.
+        """
+        return self.pushforward_2nd_order(self.pk2_tensor(sef), f)
+
+    def smat_tensor(self, pk2: Matrix, f: Matrix) -> ImmutableDenseNDimArray:
+        """
+        Compute the material stiffness tensor.
+
+        Args:
+            pk2 (Matrix): The pk2 tensor.
+            f (Matrix): The deformation gradient tensor.
+
+        Returns:
+            ImmutableDenseNDimArray: The material stiffness tensor.
+        """
+        return self.pushforward_4th_order(self.cmat_tensor(pk2), f)
 
     def substitute(
         self,
@@ -207,21 +233,22 @@ class SymbolicHandler:
 
         return lambdify((self.c_symbols(), *args), symbolic_tensor.tolist(), modules="numpy")
 
-    def _evaluate(self, lambdified_tensor: Any, *args: Any) -> Any:
+    def _evaluate(self, lambdified_tensor: Any, *args: Any, **kwargs: Any) -> Any:
         """
         Evaluate a lambdified tensor with specific values.
 
         Args:
             lambdified_tensor (function): A lambdified tensor function.
             args (dict): Additional substitution lists of symbols.
+            kwargs (dict): Additional keyword arguments.
 
         Returns:
             Generator[Any, None, None]: The evaluated tensor.
         """
-        return lambdified_tensor(*args)
+        return lambdified_tensor(*args, **kwargs)
 
     def evaluate_iterator(
-        self, lambdified_tensor: Any, numerical_c_tensors: np.ndarray, *args: Any
+        self, lambdified_tensor: Any, numerical_c_tensors: np.ndarray, *args: Any, **kwargs: Any
     ) -> Generator[Any, None, None]:
         """
         Evaluate a lambdified tensor with specific values.
@@ -229,12 +256,13 @@ class SymbolicHandler:
         Args:
             lambdified_tensor (function): A lambdified tensor function.
             args (dict): Additional substitution lists of symbols.
+            kwargs (dict): Additional keyword arguments.
 
         Returns:
             Generator[Any, None, None]: The evaluated tensor.
         """
         for numerical_c_tensor in numerical_c_tensors:
-            yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args)
+            yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args, **kwargs)
 
     @staticmethod
     def reduce_2nd_order(tensor: Matrix) -> Matrix:
@@ -261,12 +289,12 @@ class SymbolicHandler:
         ])
 
     @staticmethod
-    def reduce_4th_order(tensor: MutableDenseNDimArray) -> Matrix:
+    def reduce_4th_order(tensor: ImmutableDenseNDimArray) -> Matrix:
         """
         Convert a 3x3x3x3 matrix to 6x6 matrix using Voigt notation
 
         Args:
-            tensor (MutableDenseNDimArray): A 3x3x3x3 matrix.
+            tensor (ImmutableDenseNDimArray): A 3x3x3x3 matrix.
 
         Returns:
             Matrix: A 6x6 matrix.
@@ -307,7 +335,7 @@ class SymbolicHandler:
         return simplify(f * tensor2 * f.T)
 
     @staticmethod
-    def pushforward_4th_order(tensor4: MutableDenseNDimArray, f: Matrix) -> MutableDenseNDimArray:
+    def pushforward_4th_order(tensor4: ImmutableDenseNDimArray, f: Matrix) -> ImmutableDenseNDimArray:
         """
         Push forward a 4th order tensor in material configuration.
 
@@ -316,10 +344,10 @@ class SymbolicHandler:
             f (Matrix): The deformation gradient tensor (2nd order tensor).
 
         Returns:
-            MutableDenseNDimArray: The pushforwarded 4th order tensor.
+            ImmutableDenseNDimArray: The pushforwarded 4th order tensor.
         """
         # Calculate the pushforwarded tensor using comprehensions and broadcasting
-        return MutableDenseNDimArray([
+        return ImmutableDenseNDimArray([
             [
                 [
                     [
@@ -340,7 +368,7 @@ class SymbolicHandler:
         ])
 
     @staticmethod
-    def jr(sigma: Matrix) -> MutableDenseNDimArray:
+    def jr(sigma: Matrix) -> ImmutableDenseNDimArray:
         """
         Compute the Jaumann rate contribution for the spatial elasticity tensor.
 
@@ -348,14 +376,14 @@ class SymbolicHandler:
             sigma (Matrix): The Cauchy stress tensor (2nd order tensor).
 
         Returns:
-            MutableDenseNDimArray: The Jaumann rate contribution (4th order tensor).
+            ImmutableDenseNDimArray: The Jaumann rate contribution (4th order tensor).
         """
         # Ensure sigma is a 3x3 matrix
         if sigma.shape != (3, 3):
             raise ValueError("Wrongshape")
 
         # Use list comprehension to build the 4th-order tensor directly
-        return MutableDenseNDimArray([
+        return ImmutableDenseNDimArray([
             [
                 [
                     [
