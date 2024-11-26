@@ -49,7 +49,17 @@ def cmat(handler, pk2) -> sym.ImmutableDenseNDimArray:
 
 @pytest.fixture
 def f() -> sym.Matrix:
-    return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"DFGRD1({i + 1},{j + 1})"))
+    return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"F_{i + 1}{j + 1})"))
+
+
+@pytest.fixture
+def sigma(handler, sef, f) -> sym.Matrix:
+    return handler.sigma_tensor(sef, f)
+
+
+@pytest.fixture
+def smat(handler, sef, f) -> sym.Matrix:
+    return handler.smat_tensor(sef, f)
 
 
 # testing
@@ -115,6 +125,39 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
             for ll in range(3)
         )
         for subs in handler.substitute_iterator(cmat, right_cauchys, sef_args)
+    )
+
+
+# skip this test for now. implement the functionality in the handler and test it.
+@pytest.mark.skip(reason="Feature not implemented yet")
+def test_symbolic_subs_in_sigma(handler, sigma, right_cauchys, sef_args):
+    # right_cauchys # (N, 3, 3)
+    #
+    # for each c_tensor in sigma, substitute the sigma tensor with c values and material parameters values.
+    assert all(
+        isinstance(subs, sym.Matrix)
+        and subs.shape == (3, 3)
+        and all(isinstance(subs[i, j], sym.Expr) for i in range(3) for j in range(3))
+        for subs in handler.substitute_iterator(sigma, right_cauchys, sef_args)
+        # TODO: incorporate iterator over multiple matrices: right cauchys and def_gradients
+    )
+
+
+@pytest.mark.skip(reason="Feature not implemented yet")
+def test_symbolic_subs_in_smat(handler, smat, right_cauchys, sef_args):
+    # right_cauchys # (N, 3, 3)
+    # for each c_tensor in cmat, substitute the cmat tensor with c values and material parameters values.
+    assert all(
+        isinstance(subs, sym.MutableDenseNDimArray)
+        and subs.shape == (3, 3, 3, 3)
+        and all(
+            isinstance(subs[i, j, k, ll], sym.Expr)
+            for i in range(3)
+            for j in range(3)
+            for k in range(3)
+            for ll in range(3)
+        )
+        for subs in handler.substitute_iterator(smat, right_cauchys, sef_args)
     )
 
 

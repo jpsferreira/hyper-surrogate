@@ -39,7 +39,7 @@ def test_material_dummy_sef(material):
 
 def test_lambdify_invariant1(material, c_tensor):
     # Fetch the symbolic invariant1 expression
-    inv1_func = material.evaluate_expr(material.invariant1, c_tensor)
+    inv1_func = material.substitute_iterator(material.invariant1, c_tensor)
     inv1_results = np.array(list(inv1_func))
     assert inv1_results.shape == (2,)
     assert inv1_results[0] == 3.0
@@ -48,7 +48,7 @@ def test_lambdify_invariant1(material, c_tensor):
 
 def test_lambdify_invariant2(material, c_tensor):
     # Fetch the symbolic invariant2 expression
-    inv2_func = material.evaluate_expr(material.invariant2, c_tensor)
+    inv2_func = material.substitute_iterator(material.invariant2, c_tensor)
     inv2_results = np.array(list(inv2_func))
     assert inv2_results.shape == (2,)
     assert inv2_results[0] == 0
@@ -57,7 +57,7 @@ def test_lambdify_invariant2(material, c_tensor):
 
 def test_lambdify_invariant3(material, c_tensor):
     # Fetch the symbolic invariant3 expression
-    inv3_func = material.evaluate_expr(material.invariant3, c_tensor)
+    inv3_func = material.substitute_iterator(material.invariant3, c_tensor)
     inv3_results = np.array(list(inv3_func))
     assert inv3_results.shape == (2,)
     assert inv3_results[0] == 1.0
@@ -75,7 +75,7 @@ def test_cmat_symbol(material):
     assert material.cmat_symb.shape == (3, 3, 3, 3)
     assert material.cmat_symb.shape == material.cmat_tensor(material.pk2_symb).shape
     assert material.cmat_symb == material.cmat_tensor(material.pk2_symb)
-    assert material.cmat_symb == sym.MutableDenseNDimArray(np.zeros((3, 3, 3, 3), dtype=int))
+    assert material.cmat_symb == sym.ImmutableDenseNDimArray(np.zeros((3, 3, 3, 3), dtype=int))
 
 
 def test_mooneyrivlin_sef():
