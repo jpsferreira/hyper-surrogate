@@ -106,7 +106,7 @@ class NeoHooke(Material):
     @property
     def sef(self) -> Expr:
         return (self.invariant1 - 3) * Symbol("C10") + 0.25 * Symbol("KBULK") * (
-            self.invariant3 - 1 - log(self.invariant3)
+            self.invariant3 - 1 - 2 * log(self.invariant3**0.5)
         )
 
 
