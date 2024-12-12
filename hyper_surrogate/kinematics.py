@@ -4,18 +4,28 @@ import numpy as np
 
 
 class Kinematics:
-    """A class that provides various kinematic methods."""
+    """
+    A class that provides various kinematic methods.
 
-    def __init__(self) -> None:
-        """
-        Initialize the Kinematics object.
+    Attributes:
+        None
 
-        Returns:
-            None
-        """
-        pass
+    Methods:
+        jacobian: Compute the Jacobian of the deformation gradient.
+        invariant1: Calculate the first invariant of each tensor in the batch.
+        invariant2: Calculate the second invariant of the deformation gradient tensor.
+        invariant3: Calculate the third invariant of the deformation gradient tensor.
+        right_cauchy_green: Compute the right Cauchy-Green deformation tensor for a batch of deformation gradients.
+        left_cauchy_green: Compute the left Cauchy-Green deformation tensor for a batch of deformation gradients.
+        rotation_tensor: Compute the rotation tensors.
+        pushforward: Forward tensor configuration.
+        principal_stretches: Compute the principal stretches.
+        principal_directions: Compute the principal directions.
 
-    def jacobian(self, f: np.ndarray) -> Any:
+    """
+
+    @staticmethod
+    def jacobian(f: np.ndarray) -> Any:
         """
         Compute the Jacobian of the deformation gradient.
 
@@ -28,7 +38,7 @@ class Kinematics:
         return np.linalg.det(f)
 
     @staticmethod
-    def invariant1(F: np.ndarray) -> Any:
+    def invariant1(f: np.ndarray) -> Any:
         """
         Calculate the first invariant of each tensor in the batch.
 
@@ -39,24 +49,24 @@ class Kinematics:
             The first invariant of each tensor in the batch.
         """
         # einsum
-        return np.einsum("nii->n", F)
+        return np.einsum("nii->n", f)
 
     @staticmethod
-    def invariant2(F: np.ndarray) -> Any:
+    def invariant2(f: np.ndarray) -> Any:
         """
         Calculate the second invariant of the deformation gradient tensor.
 
         Args:
-            F: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3, 3).
 
         Returns:
             The second invariant.
         """
         # use einsum to calculate the second invariant: 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
-        return 0.5 * (np.einsum("nii->n", F) ** 2 - np.einsum("nij,nji->n", F, F))
+        return 0.5 * (np.einsum("nii->n", f) ** 2 - np.einsum("nij,nji->n", f, f))
 
     @staticmethod
-    def invariant3(F: np.ndarray) -> Any:
+    def invariant3(f: np.ndarray) -> Any:
         """
         Calculate the third invariant of the deformation gradient tensor.
 
@@ -66,7 +76,7 @@ class Kinematics:
         Returns:
             The third invariant.
         """
-        return np.linalg.det(F)
+        return np.linalg.det(f)
 
     @staticmethod
     def right_cauchy_green(f: np.ndarray) -> Any:
