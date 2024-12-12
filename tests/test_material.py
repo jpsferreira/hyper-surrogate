@@ -83,6 +83,5 @@ def test_mooneyrivlin_sef():
     assert mooneyrivlin.sef == (mooneyrivlin.invariant1 - 3) * sym.Symbol("C10") + (
         mooneyrivlin.invariant2 - 3
     ) * sym.Symbol("C01") + 0.25 * sym.Symbol("KBULK") * (
-        mooneyrivlin.invariant3 - 1 - 2 * sym.log(mooneyrivlin.invariant3 ** 0.5)
+        mooneyrivlin.invariant3 - 1 - 2 * sym.log(mooneyrivlin.invariant3**0.5)
     )
-    
