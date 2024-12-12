@@ -8,7 +8,7 @@ class Kinematics:
     A class that provides various kinematic methods.
 
     Attributes:
-        None
+        None: This class does not have any attributes.
 
     Methods:
         jacobian: Compute the Jacobian of the deformation gradient.
@@ -43,7 +43,7 @@ class Kinematics:
         Calculate the first invariant of each tensor in the batch.
 
         Args:
-            F: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3, 3).
 
         Returns:
             The first invariant of each tensor in the batch.
@@ -71,7 +71,7 @@ class Kinematics:
         Calculate the third invariant of the deformation gradient tensor.
 
         Args:
-            F: The deformation gradient tensor as a 3D array.
+            f: The deformation gradient tensor as a 3D array.
 
         Returns:
             The third invariant.
