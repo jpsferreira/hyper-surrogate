@@ -129,7 +129,5 @@ class MooneyRivlin(Material):
         return (
             (self.invariant1 - 3) * Symbol("C10")
             + (self.invariant2 - 3) * Symbol("C01")
-            + 0.25
-            * Symbol("KBULK")
-            * (self.invariant3 - 1 - 2 * log(self.invariant3**0.5))
+            + 0.25 * Symbol("KBULK") * (self.invariant3 - 1 - 2 * log(self.invariant3**0.5))
         )

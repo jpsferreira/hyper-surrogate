@@ -65,17 +65,13 @@ def c_tensor(f):
 
 
 def test_sef(neohooke):
-    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol(
-        "C10"
-    ) + +0.25 * sym.Symbol("KBULK") * (
+    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10") + +0.25 * sym.Symbol("KBULK") * (
         neohooke.invariant3 - 1 - 2 * sym.log(neohooke.invariant3**0.5)
     )
 
 
 def test_lambdify_sef(neohooke, c_tensor):
-    sef_func = neohooke.substitute_iterator(
-        neohooke.sef, c_tensor, {"C10": 1, "KBULK": 1}
-    )
+    sef_func = neohooke.substitute_iterator(neohooke.sef, c_tensor, {"C10": 1, "KBULK": 1})
     sef_values = np.array(list(sef_func))
     assert sef_values.shape == (4,)
     assert sef_values[0] == 0
