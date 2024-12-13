@@ -33,10 +33,8 @@ class Reporter:
         "visualize_determinants",
     ]
 
-    def __init__(self, tensor: np.ndarray, save_dir: Path):
+    def __init__(self, tensor: np.ndarray):
         self.tensor = tensor  # tensor is a np.array (N,3,3)
-        self.save_dir = save_dir
-        # Path.mkdir(Path(self.save_dir), parents=True, exist_ok=True)
         self.pdf_metadata = {
             "Title": "Generation Session Report",
             "Author": "João Ferreira",
@@ -87,13 +85,13 @@ class Reporter:
                     fig_list.append(fig_item)
         return fig_list
 
-    def create_report(self, layout: str = "combined") -> None:
+    def create_report(self, save_dir: Path, layout: str = "combined") -> None:
         """Create final pdf report."""
         fig_list = self.generate_figures()
         fig_list_pbar = tqdm(fig_list, total=len(fig_list), leave=False)
         fig_list_pbar.set_description(f"Creating {layout} pdf report.")
         if layout == "combined":
-            with PdfPages(Path(self.save_dir, "report.pdf"), metadata=self.pdf_metadata) as pp_combined:
+            with PdfPages(Path(save_dir, "report.pdf"), metadata=self.pdf_metadata) as pp_combined:
                 for fig in fig_list_pbar:
                     fig_list_pbar.update(1)
                     title = fig.axes[0].get_title()
@@ -101,7 +99,7 @@ class Reporter:
         else:
             for fig in fig_list_pbar:
                 title = fig.axes[0].get_title()
-                file_name = Path(self.save_dir, f"{title}.pdf")
+                file_name = Path(save_dir, f"{title}.pdf")
                 with PdfPages(file_name, metadata=self.pdf_metadata) as pp_single:
                     fig.savefig(pp_single, format="pdf", bbox_inches="tight")
                 fig_list_pbar.update(1)
