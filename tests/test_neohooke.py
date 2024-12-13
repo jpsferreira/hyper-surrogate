@@ -112,6 +112,15 @@ def test_lambdify_pk2(neohooke, c_tensor, params, expected_values):
             {"C10": 0, "KBULK": 1000},
             [CMAT_VOL0, CMAT_VOL_UNI, CMAT_VOL_ARBITRARY, CMAT_VOL_ARBITRARY2],
         ),
+        (
+            {"C10": 1, "KBULK": 1000},
+            [
+                CMAT_ISO0 + CMAT_VOL0,
+                CMAT_ISO_UNI + CMAT_VOL_UNI,
+                CMAT_ISO_ARBITRARY + CMAT_VOL_ARBITRARY,
+                CMAT_ISO_ARBITRARY2 + CMAT_VOL_ARBITRARY2,
+            ],
+        ),
     ],
 )
 def test_lambdify_cmat(neohooke, c_tensor, params, expected_values):
