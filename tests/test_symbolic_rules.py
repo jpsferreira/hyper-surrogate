@@ -65,6 +65,13 @@ def smat(handler, sef, f) -> sym.Matrix:
 # testing
 
 
+def test_f_symbols(handler):
+    # assert f_symbols
+    f_symbols = handler.f_symbols()
+    assert isinstance(f_symbols, list)
+    assert all(isinstance(f, sym.Symbol) for f in f_symbols)
+
+
 def test_c_symbols(handler):
     # assert c_symbols
     c_symbols = handler.c_symbols()
@@ -184,9 +191,21 @@ def test_reduce_2nd_order(handler, pk2):
     assert handler.reduce_2nd_order(pk2).shape == (6, 1)
 
 
+def test_reduce_2nd_order_with_wrong_shape(handler):
+    # reduce order of pk2. assert shape
+    with pytest.raises(ValueError):
+        handler.reduce_2nd_order(np.ones((3, 4)))
+
+
 def test_reduce_4th_order(handler, cmat):
     # reduce order of cmat. assert shape
     assert handler.reduce_4th_order(cmat).shape == (6, 6)
+
+
+def test_reduce_4th_order_with_wrong_shape(handler):
+    # reduce order of cmat. assert shape
+    with pytest.raises(ValueError):
+        handler.reduce_4th_order(np.ones((3, 4, 3, 4)))
 
 
 @pytest.mark.slow
@@ -199,3 +218,14 @@ def test_pushforward_2nd_order(handler, pk2, f):
 def test_pushforward_4th_order(handler, cmat, f):
     # pushforward cmat to spatial stiffness tensor. assert shape
     assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)
+
+
+def test_jr(handler, sigma):
+    # jaumann rate tensor. assert shape
+    assert handler.jr(sigma).shape == (3, 3, 3, 3)
+
+
+def test_jr_with_wrong_shape(handler):
+    # jaumann rate tensor. assert shape
+    with pytest.raises(ValueError):
+        handler.jr(np.ones((3, 4)))
