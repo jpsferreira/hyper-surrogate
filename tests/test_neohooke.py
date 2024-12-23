@@ -90,6 +90,15 @@ def test_lambdify_sef(neohooke, c_tensor):
             {"C10": 0, "KBULK": 1000},
             [PK2_VOL0, PK2_VOL_UNI, PK2_VOL_ARBITRARY, PK2_VOL_ARBITRARY2],
         ),
+        (
+            {"C10": 1, "KBULK": 1000},
+            [
+                PK2_ISO0 + PK2_VOL0,
+                PK2_ISO_UNI + PK2_VOL_UNI,
+                PK2_ISO_ARBITRARY + PK2_VOL_ARBITRARY,
+                PK2_ISO_ARBITRARY2 + PK2_VOL_ARBITRARY2,
+            ],
+        ),
     ],
 )
 def test_lambdify_pk2(neohooke, c_tensor, params, expected_values):
