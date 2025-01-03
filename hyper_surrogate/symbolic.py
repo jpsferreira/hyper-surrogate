@@ -17,7 +17,7 @@ from sympy import (
 
 class SymbolicHandler:
     """
-    A class that handles symbolic computations using SymPy.
+    A class that handles symbolic computations for Continuum Mechanics Hyperelastic Frameworks using SymPy.
 
     Attributes:
         c_tensor (Matrix): A 3x3 matrix of symbols.

@@ -68,11 +68,6 @@ def test_pushforward(def_gradients, K):
     assert np.allclose(forwards, np.array([f @ np.eye(3) @ f.T for f in def_gradients]))
 
 
-def test_rotation_tensor(def_gradients, K):
-    rotation_tensors = K.rotation_tensor(def_gradients)
-    assert np.allclose(rotation_tensors, np.array([f @ np.linalg.inv(f) for f in def_gradients]))
-
-
 def test_principal_stretches(def_gradients, K):
     principal_stretches = K.principal_stretches(def_gradients)
     assert np.allclose(

@@ -13,9 +13,7 @@ Hyperelastic Surrogates
 
 ## Installation
 
-```bash
-pip install hyper-surrogate
-```
+- Read the [installation guide](https://jpsferreira.github.io/hyper-surrogate/installation.html) for more information.
 
 ## Usage
 

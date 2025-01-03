@@ -27,12 +27,16 @@ pre-commit = "^3.4.0"
 tox = "^4.11.1"
 types-tqdm = "^4.66.0.20240106"
 types-seaborn = "^0.13.2.20240311"
+jupyter = "^1.1.1"
+pandas = "^2.2.3"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = "^9.2.7"
 mkdocstrings = "^0.26.1"
 mkdocs = "^1.6.1"
 mkdocstrings-python = "^1.11.1"
+mknotebooks = "^0.8.0"
+pymdown-extensions = "^10.13"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

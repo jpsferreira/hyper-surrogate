@@ -121,19 +121,6 @@ class Kinematics:
         return np.einsum("nij,nkj->nik", f, f)
 
     @staticmethod
-    def rotation_tensor(f: np.ndarray) -> Any:
-        """
-        Compute the rotation tensors.
-
-        Args:
-            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
-
-        Returns:
-            np.ndarray: The rotation tensors. batched with shape (N, 3, 3).
-        """
-        return np.einsum("nij,njk->nik", f, np.linalg.inv(f))
-
-    @staticmethod
     def pushforward(f: np.ndarray, tensor2D: np.ndarray) -> Any:
         """
         Forward tensor configuration.
@@ -171,3 +158,41 @@ class Kinematics:
             np.ndarray: The principal directions.
         """
         return np.linalg.eig(self.right_cauchy_green(f))[1]
+
+    def right_stretch_tensor(self, f: np.ndarray) -> Any:
+        """
+        Compute the right stretch tensor.
+
+        Args:
+            f (np.ndarray): The deformation gradient.
+
+        Returns:
+            np.ndarray: The right stretch tensor.
+        """
+        v, vv = np.linalg.eig(self.right_cauchy_green(f))
+        return np.einsum("...ij,...j->...ij", vv, v)
+
+    def left_stretch_tensor(self, f: np.ndarray) -> Any:
+        """
+        Compute the left stretch tensor.
+
+        Args:
+            f (np.ndarray): The deformation gradient.
+
+        Returns:
+            np.ndarray: The left stretch tensor.
+        """
+        v, vv = np.linalg.eig(self.left_cauchy_green(f))
+        return np.einsum("...ij,...j->...ij", vv, v)
+
+    def rotation_tensor(self, f: np.ndarray) -> Any:
+        """
+        Compute the rotation tensors.
+
+        Args:
+            f (np.ndarray): The deformation gradients. batched with shape (N, 3, 3).
+
+        Returns:
+            np.ndarray: The rotation tensors. batched with shape (N, 3, 3).
+        """
+        return np.einsum("nij,njk->nik", f, np.linalg.inv(self.right_stretch_tensor(f)))
