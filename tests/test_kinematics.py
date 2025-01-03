@@ -82,3 +82,18 @@ def test_principal_directions(def_gradients, K):
         principal_directions,
         np.array([np.linalg.eig(f.T @ f)[1] for f in def_gradients]),
     )
+
+
+def test_right_stretch_tensor(def_gradients, K):
+    right_stretch_tensor = K.right_stretch_tensor(def_gradients)
+    assert right_stretch_tensor.shape == (SIZE, 3, 3)
+
+
+def test_left_stretch_tensor(def_gradients, K):
+    left_stretch_tensor = K.left_stretch_tensor(def_gradients)
+    assert left_stretch_tensor.shape == (SIZE, 3, 3)
+
+
+def test_rotation_tensor(def_gradients, K):
+    rotation_tensor = K.rotation_tensor(def_gradients)
+    assert rotation_tensor.shape == (SIZE, 3, 3)

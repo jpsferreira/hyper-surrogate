@@ -114,3 +114,8 @@ class TestDeformationGradient:
         deformation_gradient = deformation_generator.uniaxial([2.0, 3.0])
         R = np.array([[[1, 0, 0], [0, 0, 1], [0, -1, 0]], [[1, 0, 0], [0, 0, 1], [0, -1, 0]]])
         assert np.all(deformation_generator.rotate(deformation_gradient, R) == deformation_gradient)
+
+    @pytest.mark.parametrize("mode", ["uniaxial", "biaxial", "shear"])
+    def test_generate_modes(self, deformation_generator, mode):
+        deformation_gradient = deformation_generator.generate(mode=mode)
+        assert isinstance(deformation_gradient, np.ndarray)
