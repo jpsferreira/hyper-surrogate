@@ -9,13 +9,16 @@ copyright: Maintained by <a href="https://jpsferreira.com">Florian</a>.
 
 nav:
   - Home: index.md
+  - Installation: installation.md
   - Modules: modules.md
+  - Tutorial1: tutorial1.ipynb
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
           collector: griffe
+  - mknotebooks
 theme:
   name: material
   feature:
@@ -50,3 +53,21 @@ markdown_extensions:
       permalink: true
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.superfences:
+  - pymdownx.inlinehilite
+  - pymdownx.highlight
+  - pymdownx.extra
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist
+  - pymdownx.emoji
+  - pymdownx.magiclink
+
+extra_javascript:
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.js
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/contrib/auto-render.min.js
+  - custom.js
+
+extra_css:
+  - https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css

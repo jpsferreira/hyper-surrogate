@@ -260,6 +260,7 @@ class DeformationGradientGenerator(DeformationGradient):
         stretch_max: float = 3.0,
         shear_min: float = -1,
         shear_max: float = 1,
+        mode: str | None = None,
     ) -> Any:
         """
         Generates a random deformation gradient.
@@ -269,11 +270,39 @@ class DeformationGradientGenerator(DeformationGradient):
             stretch_max (float): Maximum value for stretch. Default is 3.0.
             shear_min (float): Minimum value for shear. Default is -1.
             shear_max (float): Maximum value for shear. Default is 1.
+            mode (str): Mode for deformation gradient generation.
+                        Options are 'uniaxial', 'shear', 'biaxial', or None.
+                        Default is None.
 
         Returns:
             Any: Generated random deformation gradient.
-
         """
+
+        def generate_uniaxial() -> Any:
+            u = self.generator.uniform(stretch_min, stretch_max)
+            return self.rotate(self.uniaxial(u), self.generate_rotation())
+
+        def generate_shear() -> Any:
+            s = self.generator.uniform(shear_min, shear_max)
+            return self.rotate(self.shear(s), self.generate_rotation())
+
+        def generate_biaxial() -> Any:
+            b1 = self.generator.uniform(stretch_min, stretch_max)
+            b2 = self.generator.uniform(stretch_min, stretch_max)
+            return self.rotate(self.biaxial(b1, b2), self.generate_rotation())
+
+        # Map modes to corresponding functions
+        mode_map = {
+            "uniaxial": generate_uniaxial,
+            "shear": generate_shear,
+            "biaxial": generate_biaxial,
+        }
+
+        # If mode is specified, use the corresponding function
+        if mode in mode_map:
+            return mode_map[mode]()
+
+        # Default: combine all modes
         u, s, b1, b2 = (
             self.generator.uniform(stretch_min, stretch_max),
             self.generator.uniform(shear_min, shear_max),
@@ -290,11 +319,7 @@ class DeformationGradientGenerator(DeformationGradient):
             self.generate_rotation(),
             self.generate_rotation(),
         )
-
-        # rotate deformation gradients
         fu = self.rotate(fu, r1)
         fs = self.rotate(fs, r2)
         fb = self.rotate(fb, r3)
-
-        # Compute deformation gradient
         return np.matmul(np.matmul(fb, fu), fs)

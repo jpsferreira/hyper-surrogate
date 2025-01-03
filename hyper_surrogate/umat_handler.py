@@ -26,7 +26,6 @@ class UMATHandler:
         Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
         Args:
-            vector (list): The symbolic vector or matrix to process.
             var_name (str): The base name for the variables in the Fortran code.
 
         Returns:
