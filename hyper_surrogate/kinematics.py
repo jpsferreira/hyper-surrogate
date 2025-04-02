@@ -30,7 +30,7 @@ class Kinematics:
         Compute the Jacobian of the deformation gradient.
 
         Args:
-            f: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3).
 
         Returns:
             np.ndarray: The Jacobian of the deformation gradient.
@@ -43,7 +43,7 @@ class Kinematics:
         Calculate the first invariant of each tensor in the batch.
 
         Args:
-            f: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3).
 
         Returns:
             The first invariant of each tensor in the batch.
@@ -57,7 +57,7 @@ class Kinematics:
         Calculate the second invariant of the deformation gradient tensor.
 
         Args:
-            f: 4D tensor of shape (N, 3, 3, 3).
+            f: 4D tensor of shape (N, 3, 3).
 
         Returns:
             The second invariant.
