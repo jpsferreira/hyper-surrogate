@@ -1,4 +1,5 @@
-from typing import Any, Iterable
+import logging
+from typing import Any, Dict, Iterable
 
 from sympy import (
     Expr,
@@ -13,12 +14,12 @@ from hyper_surrogate.symbolic import SymbolicHandler
 
 class Material(SymbolicHandler):
     """
-    Material class for defining the constitutive model of the material.
+    Base class for defining constitutive material models.
     The class is inherited from the SymbolicHandler class and provides
     the necessary methods to define the constitutive model in symbolic form.
 
     Args:
-        parameters: Iterable[Any] - The material parameters as a list of strings
+        parameters (Iterable[str]): Parameter names for the material model.
 
     Properties:
         sef: The strain energy function in symbolic form
@@ -26,11 +27,13 @@ class Material(SymbolicHandler):
     Methods:
         pk2() -> Callable[..., Any]: Returns the second Piola-Kirchhoff stress tensor
         cmat() -> Callable[..., Any]: Returns the material stiffness tensor
+        get_default_parameters: Returns default parameter values for the material
+        validate_parameters: Validates provided parameter values
     """
 
     def __init__(self, parameters: Iterable[str]) -> None:
         super().__init__()
-        self.parameters = parameters
+        self.parameters = list(parameters)
 
     @property
     def sef(self) -> Expr:
@@ -88,6 +91,43 @@ class Material(SymbolicHandler):
             tangent += self.jr_symb(f)
         return self.reduce_4th_order(tangent)
 
+    def get_default_parameters(self) -> Dict[str, float]:
+        """
+        Get default parameter values for the material.
+
+        Returns:
+            Dict[str, float]: Dictionary of parameter names and their default values.
+        """
+        # Base implementation returns 1.0 for each parameter
+        return {param: 1.0 for param in self.parameters}
+
+    def validate_parameters(self, params: Dict[str, float]) -> Dict[str, float]:
+        """
+        Validate the provided parameter values. If parameters are missing,
+        use default values. Raises error for unknown parameters.
+
+        Args:
+            params (Dict[str, float]): Dictionary of parameter names and values.
+
+        Returns:
+            Dict[str, float]: Dictionary of validated parameter values.
+
+        Raises:
+            ValueError: If unknown parameters are provided.
+        """
+        # Check for unknown parameters
+        unknown_params = set(params.keys()) - set(self.parameters)
+        if unknown_params:
+            raise ValueError(unknown_params)
+
+        # Use default values for missing parameters
+        defaults = self.get_default_parameters()
+        validated_params = defaults.copy()
+        validated_params.update(params)
+
+        logging.debug(f"Using parameters: {validated_params}")
+        return validated_params
+
 
 class NeoHooke(Material):
     """
@@ -109,6 +149,18 @@ class NeoHooke(Material):
             self.invariant3 - 1 - 2 * log(self.invariant3**0.5)
         )
 
+    def get_default_parameters(self) -> Dict[str, float]:
+        """
+        Get default parameter values for Neo-Hookean model.
+
+        Returns:
+            Dict[str, float]: Dictionary of parameter names and their default values.
+        """
+        return {
+            "C10": 0.5,  # Default shear modulus (MPa)
+            "KBULK": 1000.0,  # Default bulk modulus (MPa)
+        }
+
 
 class MooneyRivlin(Material):
     """
@@ -121,7 +173,7 @@ class MooneyRivlin(Material):
     """
 
     def __init__(self) -> None:
-        params = ["C10", "C01"]
+        params = ["C10", "C01", "KBULK"]
         super().__init__(params)
 
     @property
@@ -131,3 +183,16 @@ class MooneyRivlin(Material):
             + (self.invariant2 - 3) * Symbol("C01")
             + 0.25 * Symbol("KBULK") * (self.invariant3 - 1 - 2 * log(self.invariant3**0.5))
         )
+
+    def get_default_parameters(self) -> Dict[str, float]:
+        """
+        Get default parameter values for Mooney-Rivlin model.
+
+        Returns:
+            Dict[str, float]: Dictionary of parameter names and their default values.
+        """
+        return {
+            "C10": 0.3,  # Default first shear modulus (MPa)
+            "C01": 0.2,  # Default second shear modulus (MPa)
+            "KBULK": 1000.0,  # Default bulk modulus (MPa)
+        }

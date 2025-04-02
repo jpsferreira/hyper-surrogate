@@ -93,11 +93,13 @@ class UMATHandler:
         Args:
             filename (str): The file path where the UMAT code will be written.
         """
+        props_code = self.generate_props_code()
         sigma_code = self.generate_expression(self.cauchy, "stress")
         smat_code = self.generate_expression(self.tangent, "ddsdde")
+        props_code_str = self.code_as_string(props_code)
         sigma_code_str = self.code_as_string(sigma_code)
         smat_code_str = self.code_as_string(smat_code)
-        self.write_umat_code(sigma_code_str, smat_code_str, filename)
+        self.write_umat_code(props_code_str, sigma_code_str, smat_code_str, filename)
 
     @property
     def cauchy(self) -> sym.Matrix:
@@ -114,6 +116,19 @@ class UMATHandler:
         """
         logging.info("Generating tangent matrix...")
         return self.material.tangent(self.f, use_jaumann_rate=True).subs(self.sub_exp)
+
+    def generate_props_code(self) -> List[str]:
+        """
+        Generate the Fortran code for material properties.
+
+        Returns:
+            list: The Fortran code for material properties.
+        """
+        logging.info("Generating material properties code...")
+        parameters_names = self.material.get_default_parameters()
+        props_init = [f"DOUBLE PRECISION :: {param}" for param in parameters_names]
+        props_code = [f"{param} = PROPS({i + 1})" for i, param in enumerate(parameters_names)]
+        return props_init + props_code
 
     def generate_expression(self, tensor: sym.Matrix, var_name: str) -> List[str]:
         logging.info(f"Generating CSE for {var_name}...")
@@ -132,7 +147,7 @@ class UMATHandler:
         """
         return "\n".join(code)
 
-    def write_umat_code(self, sigma_code_str: str, smat_code_str: str, filename: Path) -> None:
+    def write_umat_code(self, props_code_str: str, sigma_code_str: str, smat_code_str: str, filename: Path) -> None:
         """
         Write the generated Fortran code into a UMAT subroutine file.
 
@@ -201,10 +216,10 @@ DOUBLE PRECISION, INTENT(IN OUT)         :: drot(3, 3)
 DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd0(3, 3)
 DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd1(3, 3)
 
-DOUBLE PRECISION :: C10  ! Example material property
+IMPLICIT DOUBLE PRECISION (x)
 
 ! Initialize material properties
-C10 = PROPS(1)
+{props_code_str}
 
 ! Define the stress calculation from the pk2 symbolic expression
 {sigma_code_str}

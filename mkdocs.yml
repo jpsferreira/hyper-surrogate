@@ -11,14 +11,14 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Modules: modules.md
-  - Tutorial1: tutorial1.ipynb
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          collector: griffe
-  - mknotebooks
+          options:
+            show_source: true
+            heading_level: 2
 theme:
   name: material
   feature:

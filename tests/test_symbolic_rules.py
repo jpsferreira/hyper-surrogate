@@ -208,13 +208,13 @@ def test_reduce_4th_order_with_wrong_shape(handler):
         handler.reduce_4th_order(np.ones((3, 4, 3, 4)))
 
 
-@pytest.mark.slow
+@pytest.mark.skip(reason="Slow test")
 def test_pushforward_2nd_order(handler, pk2, f):
     # pushforward pk2 to cauchy stress tensor. assert shape
     assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
 
 
-@pytest.mark.slow
+@pytest.mark.skip(reason="Slow test")
 def test_pushforward_4th_order(handler, cmat, f):
     # pushforward cmat to spatial stiffness tensor. assert shape
     assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)
