@@ -79,6 +79,16 @@ def test_c_symbols(handler):
     assert all(isinstance(c, sym.Symbol) for c in c_symbols)
 
 
+def test_symbolic_invariant1(handler):
+    invariant1 = handler.invariant1
+    assert isinstance(invariant1, sym.Expr)
+
+
+def test_symbolic_invariant2(handler):
+    invariant2 = handler.invariant2
+    assert isinstance(invariant2, sym.Expr)
+
+
 def test_symbolic_pk2_cmat(pk2, cmat):
     # derivative of sef in order to c_tensor
 

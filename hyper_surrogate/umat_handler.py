@@ -174,6 +174,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, ddsddt, drplde, drpl
     celent, dfgrd0, dfgrd1, noel, npt, layer, kspt, kstep, kinc)
 !
 !use global
+IMPLICIT DOUBLE PRECISION (x)
 !----------------------------------------------------------------------
 !--------------------------- DECLARATIONS -----------------------------
 !----------------------------------------------------------------------
@@ -215,8 +216,6 @@ DOUBLE PRECISION, INTENT(IN OUT)         :: coords(3)
 DOUBLE PRECISION, INTENT(IN OUT)         :: drot(3, 3)
 DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd0(3, 3)
 DOUBLE PRECISION, INTENT(IN OUT)         :: dfgrd1(3, 3)
-
-IMPLICIT DOUBLE PRECISION (x)
 
 ! Initialize material properties
 {props_code_str}
