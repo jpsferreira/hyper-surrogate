@@ -12,9 +12,11 @@ class Kinematics:
 
     Methods:
         jacobian: Compute the Jacobian of the deformation gradient.
-        invariant1: Calculate the first invariant of each tensor in the batch.
-        invariant2: Calculate the second invariant of the deformation gradient tensor.
-        invariant3: Calculate the third invariant of the deformation gradient tensor.
+        trace_invariant: Calculate the first invariant (trace) of each tensor in the batch.
+        quadratic_invariant: Calculate the second invariant of the tensor.
+        det_invariant: Calculate the third invariant (determinant) of the tensor.
+        isochoric_invariant1: Calculate the isochoric first invariant.
+        isochoric_invariant2: Calculate the isochoric second invariant.
         right_cauchy_green: Compute the right Cauchy-Green deformation tensor for a batch of deformation gradients.
         left_cauchy_green: Compute the left Cauchy-Green deformation tensor for a batch of deformation gradients.
         rotation_tensor: Compute the rotation tensors.
@@ -38,45 +40,56 @@ class Kinematics:
         return np.linalg.det(f)
 
     @staticmethod
-    def invariant1(f: np.ndarray) -> Any:
+    def trace_invariant(c: np.ndarray) -> Any:
         """
-        Calculate the first invariant of each tensor in the batch.
+        Calculate the first invariant (trace) of each tensor in the batch.
 
         Args:
-            f: 4D tensor of shape (N, 3, 3).
+            c: Tensor of shape (N, 3, 3).
 
         Returns:
             The first invariant of each tensor in the batch.
         """
-        # einsum
-        return np.einsum("nii->n", f)
+        return np.einsum("nii->n", c)
 
     @staticmethod
-    def invariant2(f: np.ndarray) -> Any:
+    def quadratic_invariant(c: np.ndarray) -> Any:
         """
-        Calculate the second invariant of the deformation gradient tensor.
+        Calculate the second invariant of the tensor.
 
         Args:
-            f: 4D tensor of shape (N, 3, 3).
+            c: Tensor of shape (N, 3, 3).
 
         Returns:
             The second invariant.
         """
-        # use einsum to calculate the second invariant: 0.5 * (np.trace(F) ** 2 - np.trace(np.matmul(F, F)))
-        return 0.5 * (np.einsum("nii->n", f) ** 2 - np.einsum("nij,nji->n", f, f))
+        return 0.5 * (np.einsum("nii->n", c) ** 2 - np.einsum("nij,nji->n", c, c))
 
     @staticmethod
-    def invariant3(f: np.ndarray) -> Any:
+    def det_invariant(c: np.ndarray) -> Any:
         """
-        Calculate the third invariant of the deformation gradient tensor.
+        Calculate the third invariant (determinant) of the tensor.
 
         Args:
-            f: The deformation gradient tensor as a 3D array.
+            c: Tensor of shape (N, 3, 3).
 
         Returns:
             The third invariant.
         """
-        return np.linalg.det(f)
+        return np.linalg.det(c)
+
+    @staticmethod
+    def isochoric_invariant1(c: np.ndarray) -> np.ndarray:
+        """Isochoric first invariant: tr(C) * det(C)^(-1/3)."""
+        return np.einsum("nii->n", c) * np.linalg.det(c) ** (-1.0 / 3.0)  # type: ignore[no-any-return]
+
+    @staticmethod
+    def isochoric_invariant2(c: np.ndarray) -> np.ndarray:
+        """Isochoric second invariant: 0.5*(I1^2 - tr(C^2)) * det(C)^(-2/3)."""
+        i1 = np.einsum("nii->n", c)
+        i1_sq = i1**2
+        tr_c2 = np.einsum("nij,nji->n", c, c)
+        return 0.5 * (i1_sq - tr_c2) * np.linalg.det(c) ** (-2.0 / 3.0)  # type: ignore[no-any-return]
 
     @staticmethod
     def right_cauchy_green(f: np.ndarray) -> Any:

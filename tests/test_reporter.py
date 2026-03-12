@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from hyper_surrogate.reporter import Reporter
+from hyper_surrogate.reporting.reporter import Reporter
 
 
 @pytest.fixture

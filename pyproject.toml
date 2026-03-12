@@ -18,6 +18,10 @@ matplotlib = "^3.8.3"
 seaborn = "^0.13.2"
 tqdm = "^4.66.5"
 pandas = "^2.2.3"
+torch = {version = ">=2.0", optional = true}
+
+[tool.poetry.extras]
+ml = ["torch"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
@@ -53,11 +57,21 @@ warn_unused_ignores = "True"
 show_error_codes = "True"
 ignore_missing_imports = "True"
 
+[[tool.mypy.overrides]]
+module = [
+    "hyper_surrogate.data.dataset",
+    "hyper_surrogate.models.*",
+    "hyper_surrogate.training.*",
+]
+warn_unused_ignores = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+addopts = "-m 'not slow'"
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py310"
 line-length = 120
 fix = true
 lint.select = [

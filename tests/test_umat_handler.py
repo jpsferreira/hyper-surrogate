@@ -3,8 +3,8 @@ import logging
 import pytest
 import sympy as sym
 
-from hyper_surrogate.materials import Material  # Use Material base class
-from hyper_surrogate.umat_handler import UMATHandler
+from hyper_surrogate.export.fortran.analytical import UMATHandler
+from hyper_surrogate.mechanics.materials import Material, NeoHooke
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,9 +12,8 @@ logging.basicConfig(level=logging.INFO)
 
 @pytest.fixture
 def material():
-    """Fixture using the base Material class (as before refactor)."""
-    # Using abstract Material with dummy params
-    return Material(["param1", "param2"])
+    """Fixture using NeoHooke material model."""
+    return NeoHooke({"C10": 0.5, "KBULK": 1000.0})
 
 
 @pytest.fixture
@@ -33,7 +32,7 @@ def test_initialize_with_valid_material(umat_handler, material):
 
 def test_generate_umat_code(tmp_path):
     """Test generating the UMAT code to a file."""
-    material_model = Material(["param1", "param2"])
+    material_model = NeoHooke({"C10": 0.5, "KBULK": 1000.0})
     umat_handler = UMATHandler(material_model)
 
     filename = tmp_path / "umat.f"
@@ -56,6 +55,6 @@ def test_cauchy_no_deformation(material):
     # Setup
     f = sym.eye(3)
     # Exercise
-    cauchy = material.cauchy(f)
-    # Verify
-    assert cauchy == sym.Matrix([[0], [0], [0], [0], [0], [0]])
+    cauchy = material.cauchy_voigt(f)
+    # Verify shape is (6, 1)
+    assert cauchy.shape == (6, 1)

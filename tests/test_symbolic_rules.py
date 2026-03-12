@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 import sympy as sym
 
-from hyper_surrogate.deformation_gradient import DeformationGradientGenerator as FGen
-from hyper_surrogate.kinematics import Kinematics as K
-from hyper_surrogate.symbolic import SymbolicHandler
+from hyper_surrogate.data.deformation import DeformationGenerator
+from hyper_surrogate.mechanics.kinematics import Kinematics as K
+from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 
 SIZE = 2
 
@@ -12,7 +12,7 @@ SIZE = 2
 # numeric fixtures
 @pytest.fixture
 def def_gradients() -> np.ndarray:
-    return FGen(seed=42, size=SIZE).generate()
+    return DeformationGenerator(seed=42).combined(SIZE)
 
 
 @pytest.fixture
@@ -29,7 +29,9 @@ def handler() -> SymbolicHandler:
 # mooney_rivlin
 @pytest.fixture
 def sef(handler) -> sym.Expr:
-    return (handler.invariant1 - 3) * sym.Symbol("C10") + (handler.invariant2 - 3) * sym.Symbol("C01")
+    return (handler.isochoric_invariant1 - 3) * sym.Symbol("C10") + (handler.isochoric_invariant2 - 3) * sym.Symbol(
+        "C01"
+    )
 
 
 @pytest.fixture
@@ -39,12 +41,12 @@ def sef_args() -> dict:
 
 @pytest.fixture
 def pk2(handler, sef) -> sym.Matrix:
-    return handler.pk2_tensor(sef)
+    return handler.pk2(sef)
 
 
 @pytest.fixture
 def cmat(handler, pk2) -> sym.ImmutableDenseNDimArray:
-    return handler.cmat_tensor(pk2)
+    return handler.cmat(pk2)
 
 
 @pytest.fixture
@@ -54,12 +56,12 @@ def f() -> sym.Matrix:
 
 @pytest.fixture
 def sigma(handler, sef, f) -> sym.Matrix:
-    return handler.sigma_tensor(sef, f)
+    return handler.cauchy(sef, f)
 
 
 @pytest.fixture
 def smat(handler, sef, f) -> sym.Matrix:
-    return handler.smat_tensor(sef, f)
+    return handler.spatial_tangent(sef, f)
 
 
 # testing
@@ -80,12 +82,12 @@ def test_c_symbols(handler):
 
 
 def test_symbolic_invariant1(handler):
-    invariant1 = handler.invariant1
+    invariant1 = handler.isochoric_invariant1
     assert isinstance(invariant1, sym.Expr)
 
 
 def test_symbolic_invariant2(handler):
-    invariant2 = handler.invariant2
+    invariant2 = handler.isochoric_invariant2
     assert isinstance(invariant2, sym.Expr)
 
 
@@ -180,7 +182,7 @@ def test_symbolic_subs_in_smat(handler, smat, right_cauchys, sef_args):
 
 def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     # pk2 function
-    pk2_func = handler.lambda_tensor(pk2, *sef_args.keys())
+    pk2_func = handler.lambdify(pk2, *sef_args.keys())
     pk2_values = np.array(list(handler.evaluate_iterator(pk2_func, right_cauchys, *sef_args.values())))
     assert all(isinstance(pk2_value, np.ndarray) for pk2_value in pk2_values)
     assert all(pk2_value.shape == (3, 3) for pk2_value in pk2_values)
@@ -189,54 +191,54 @@ def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
 
 def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
     # cmat function
-    cmat_func = handler.lambda_tensor(cmat, *sef_args.keys())
+    cmat_func = handler.lambdify(cmat, *sef_args.keys())
     cmat_values = np.array(list(handler.evaluate_iterator(cmat_func, right_cauchys, *sef_args.values())))
     assert cmat_values.shape == (SIZE, 3, 3, 3, 3)
     assert all(isinstance(cmat_value, np.ndarray) for cmat_value in cmat_values)
     assert all(cmat_value.shape == (3, 3, 3, 3) for cmat_value in cmat_values)
 
 
-def test_reduce_2nd_order(handler, pk2):
+def test_to_voigt_2(handler, pk2):
     # reduce order of pk2. assert shape
-    assert handler.reduce_2nd_order(pk2).shape == (6, 1)
+    assert handler.to_voigt_2(pk2).shape == (6, 1)
 
 
-def test_reduce_2nd_order_with_wrong_shape(handler):
+def test_to_voigt_2_with_wrong_shape(handler):
     # reduce order of pk2. assert shape
     with pytest.raises(ValueError):
-        handler.reduce_2nd_order(np.ones((3, 4)))
+        handler.to_voigt_2(np.ones((3, 4)))
 
 
-def test_reduce_4th_order(handler, cmat):
+def test_to_voigt_4(handler, cmat):
     # reduce order of cmat. assert shape
-    assert handler.reduce_4th_order(cmat).shape == (6, 6)
+    assert handler.to_voigt_4(cmat).shape == (6, 6)
 
 
-def test_reduce_4th_order_with_wrong_shape(handler):
+def test_to_voigt_4_with_wrong_shape(handler):
     # reduce order of cmat. assert shape
     with pytest.raises(ValueError):
-        handler.reduce_4th_order(np.ones((3, 4, 3, 4)))
+        handler.to_voigt_4(np.ones((3, 4, 3, 4)))
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_pushforward_2nd_order(handler, pk2, f):
     # pushforward pk2 to cauchy stress tensor. assert shape
     assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_pushforward_4th_order(handler, cmat, f):
     # pushforward cmat to spatial stiffness tensor. assert shape
     assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_jr(handler, sigma):
     # jaumann rate tensor. assert shape
     assert handler.jr(sigma).shape == (3, 3, 3, 3)
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_jr_with_wrong_shape(handler):
     # jaumann rate tensor. assert shape
     with pytest.raises(ValueError):

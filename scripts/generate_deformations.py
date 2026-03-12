@@ -10,10 +10,10 @@ from pathlib import Path
 
 import numpy as np
 
-from hyper_surrogate.deformation_gradient import DeformationGradientGenerator
-from hyper_surrogate.kinematics import Kinematics as K
-from hyper_surrogate.materials import MooneyRivlin, NeoHooke
-from hyper_surrogate.reporter import Reporter
+from hyper_surrogate.data.deformation import DeformationGenerator
+from hyper_surrogate.mechanics.kinematics import Kinematics as K
+from hyper_surrogate.mechanics.materials import MooneyRivlin, NeoHooke
+from hyper_surrogate.reporting.reporter import Reporter
 
 # set log level
 logging.basicConfig(level=logging.INFO)
@@ -49,11 +49,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_params", type=float, nargs="+", help="Material model parameters")
     args = parser.parse_args()
 
-    seed = args.seed if args.seed else None
-
-    # if "pk2" in args.tensors or "cmat" in args.tensors:
-    #     assert args.material, "Material model must be specified to generate pk2 or cmat tensors."
-    #     assert len(args.model_params) > 0, "Material model parameters must be specified."
+    seed = args.seed if args.seed else 42
 
     # set material model
     if args.material == "nh":
@@ -63,24 +59,20 @@ if __name__ == "__main__":
 
     results = {"f": None, "pk2": None, "cmat": None}
     # numeric generator
-    f = DeformationGradientGenerator(seed=seed, size=args.batch_size).generate()
+    f = DeformationGenerator(seed=seed).combined(args.batch_size)
     results["f"] = f
     logging.info(f"Generated {args.batch_size} deformation gradients.")
     c = K.right_cauchy_green(f)
-    # first invariant
-    I1 = K.invariant1(c)
 
     # report pdf to output_path name
-    reporter = Reporter(c, args.output_path.parent)
-    reporter.create_report()
+    reporter = Reporter(c)
+    reporter.create_report(args.output_path.parent)
 
     if "pk2" in args.tensors:
-        pk2_func_iterator = material.evaluate_iterator(material.pk2(), c, 1)
-        results["pk2"] = np.array(list(pk2_func_iterator))
+        results["pk2"] = material.evaluate_pk2(c)
         logging.info(f"Generated {args.batch_size} pk2 tensors.")
     if "cmat" in args.tensors:
-        cmat_func_iterator = material.evaluate_iterator(material.cmat(), c, 1)
-        results["cmat"] = np.array(list(cmat_func_iterator))
+        results["cmat"] = material.evaluate_cmat(c)
         logging.info(f"Generated {args.batch_size} cmat tensors.")
 
     np.savez(args.output_path, **results)

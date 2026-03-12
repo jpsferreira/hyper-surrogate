@@ -1,4 +1,5 @@
-from typing import Any, Generator, Iterable, List
+from collections.abc import Generator, Iterable
+from typing import Any
 
 import numpy as np
 from sympy import (
@@ -27,7 +28,7 @@ class SymbolicHandler:
         self.c_tensor = self._c_tensor()
         self.f_tensor = self._f_tensor()
 
-    def f_symbols(self) -> List[Symbol]:
+    def f_symbols(self) -> list[Symbol]:
         """
         Return the f_tensor flattened symbols.
 
@@ -45,7 +46,7 @@ class SymbolicHandler:
         """
         return ImmutableMatrix(3, 3, lambda i, j: Symbol(f"F_{i + 1}{j + 1}"))
 
-    def c_symbols(self) -> List[Symbol]:
+    def c_symbols(self) -> list[Symbol]:
         """
         Return the c_tensor flattened symbols.
 
@@ -63,7 +64,7 @@ class SymbolicHandler:
         """
         return ImmutableMatrix(3, 3, lambda i, j: Symbol(f"C_{i + 1}{j + 1}"))
 
-    # multuply c_tensor by itself
+    # multiply c_tensor by itself
     def _c_tensor_squared(self) -> ImmutableMatrix:
         """
         Compute the square of the c_tensor.
@@ -75,25 +76,25 @@ class SymbolicHandler:
         return self.c_tensor**2
 
     @property
-    def invariant1(self) -> Expr:
+    def isochoric_invariant1(self) -> Expr:
         """
-        Compute the first invariant of the c_tensor.
+        Compute the first isochoric invariant of the c_tensor.
 
         Returns:
-            Expr: The first invariant of the c_tensor.
+            Expr: The first isochoric invariant of the c_tensor.
         """
         return self.c_tensor.trace() * (self.invariant3 ** (-Rational(1, 3)))
 
     @property
-    def invariant2(self) -> Expr:
+    def isochoric_invariant2(self) -> Expr:
         """
-        Compute the second invariant of the c_tensor.
+        Compute the second isochoric invariant of the c_tensor.
         I2 = 1/2 * (I1^2 - trace(c_tensor^2))
 
         Returns:
-            Expr: The second invariant of the c_tensor.
+            Expr: The second isochoric invariant of the c_tensor.
         """
-        return (Rational(1, 2) * (self.invariant1**2 - self._c_tensor_squared().trace())) * (
+        return (Rational(1, 2) * (self.isochoric_invariant1**2 - self._c_tensor_squared().trace())) * (
             self.invariant3 ** (-Rational(2, 3))
         )
 
@@ -107,7 +108,7 @@ class SymbolicHandler:
         """
         return self.c_tensor.det()
 
-    def pk2_tensor(self, sef: Expr) -> Matrix:
+    def pk2(self, sef: Expr) -> Matrix:
         """
         Compute the pk2 tensor.
 
@@ -121,7 +122,7 @@ class SymbolicHandler:
         # force symmetry
         return pk2 + pk2.T
 
-    def cmat_tensor(self, pk2: Matrix) -> ImmutableDenseNDimArray:
+    def cmat(self, pk2: Matrix) -> ImmutableDenseNDimArray:
         """
         Compute the cmat tensor.
 
@@ -142,9 +143,9 @@ class SymbolicHandler:
             for i in range(3)
         ])
 
-    def sigma_tensor(self, sef: Expr, f: Matrix) -> Matrix:
+    def cauchy(self, sef: Expr, f: Matrix) -> Matrix:
         """
-        Compute the sigma tensor.
+        Compute the Cauchy stress tensor.
 
         Args:
             sef (Expr): The strain energy function.
@@ -153,20 +154,20 @@ class SymbolicHandler:
         Returns:
             Matrix: The Cauchy stress tensor.
         """
-        return self.pushforward_2nd_order(self.pk2_tensor(sef), f)
+        return self.pushforward_2nd_order(self.pk2(sef), f)
 
-    def smat_tensor(self, pk2: Matrix, f: Matrix) -> ImmutableDenseNDimArray:
+    def spatial_tangent(self, pk2: Matrix, f: Matrix) -> ImmutableDenseNDimArray:
         """
-        Compute the material stiffness tensor.
+        Compute the spatial tangent stiffness tensor.
 
         Args:
             pk2 (Matrix): The pk2 tensor.
             f (Matrix): The deformation gradient tensor.
 
         Returns:
-            ImmutableDenseNDimArray: The material stiffness tensor.
+            ImmutableDenseNDimArray: The spatial tangent stiffness tensor.
         """
-        return self.pushforward_4th_order(self.cmat_tensor(pk2), f)
+        return self.pushforward_4th_order(self.cmat(pk2), f)
 
     def substitute(
         self,
@@ -220,7 +221,7 @@ class SymbolicHandler:
         for numerical_c_tensor in numerical_c_tensors:
             yield self.substitute(symbolic_tensor, numerical_c_tensor, *args)
 
-    def lambda_tensor(self, symbolic_tensor: Matrix, *args: Iterable[Any]) -> Any:
+    def lambdify(self, symbolic_tensor: Matrix, *args: Iterable[Any]) -> Any:
         """
         Create a lambdified function from a symbolic tensor that can be used for numerical evaluation.
 
@@ -265,7 +266,7 @@ class SymbolicHandler:
             yield self._evaluate(lambdified_tensor, numerical_c_tensor.flatten(), *args, **kwargs)
 
     @staticmethod
-    def reduce_2nd_order(tensor: Matrix) -> Matrix:
+    def to_voigt_2(tensor: Matrix) -> Matrix:
         """
         Convert a 3x3 matrix to 6x1 matrix using Voigt notation
 
@@ -289,7 +290,7 @@ class SymbolicHandler:
         ])
 
     @staticmethod
-    def reduce_4th_order(tensor: ImmutableDenseNDimArray) -> Matrix:
+    def to_voigt_4(tensor: ImmutableDenseNDimArray) -> Matrix:
         """
         Convert a 3x3x3x3 matrix to 6x6 matrix using Voigt notation
 
@@ -402,3 +403,6 @@ class SymbolicHandler:
             ]
             for i in range(3)
         ])
+
+    # Alias for jr
+    jaumann_correction = jr

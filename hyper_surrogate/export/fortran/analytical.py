@@ -1,11 +1,10 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import List
 
 import sympy as sym
 
-from hyper_surrogate.materials import Material
+from hyper_surrogate.mechanics.materials import Material
 
 
 class UMATHandler:
@@ -21,7 +20,7 @@ class UMATHandler:
         self.smat_code = None
 
     @staticmethod
-    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> List[str]:
+    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> list[str]:
         """
         Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
@@ -84,7 +83,7 @@ class UMATHandler:
     def sub_exp(self) -> dict:
         """Substitution expressions for the right Cauchy-Green tensor."""
         c = self.f.T * self.f
-        return {self.material.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
+        return {self.material.handler.c_tensor[i, j]: c[i, j] for i in range(3) for j in range(3)}
 
     def generate(self, filename: Path) -> None:
         """
@@ -107,7 +106,7 @@ class UMATHandler:
         Generate the symbolic expression for the Cauchy stress tensor.
         """
         logging.info("Generating Cauchy stress tensor...")
-        return self.material.cauchy(self.f).subs(self.sub_exp)
+        return self.material.cauchy_voigt(self.f).subs(self.sub_exp)
 
     @property
     def tangent(self) -> sym.Matrix:
@@ -115,9 +114,9 @@ class UMATHandler:
         Generate the symbolic expression for the tangent matrix.
         """
         logging.info("Generating tangent matrix...")
-        return self.material.tangent(self.f, use_jaumann_rate=True).subs(self.sub_exp)
+        return self.material.tangent_voigt(self.f, use_jaumann_rate=True).subs(self.sub_exp)
 
-    def generate_props_code(self) -> List[str]:
+    def generate_props_code(self) -> list[str]:
         """
         Generate the Fortran code for material properties.
 
@@ -125,12 +124,12 @@ class UMATHandler:
             list: The Fortran code for material properties.
         """
         logging.info("Generating material properties code...")
-        parameters_names = self.material.get_default_parameters()
+        parameters_names = list(self.material._params.keys())
         props_init = [f"DOUBLE PRECISION :: {param}" for param in parameters_names]
         props_code = [f"{param} = PROPS({i + 1})" for i, param in enumerate(parameters_names)]
         return props_init + props_code
 
-    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> List[str]:
+    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> list[str]:
         logging.info(f"Generating CSE for {var_name}...")
         return self.common_subexpressions(tensor, var_name)
 

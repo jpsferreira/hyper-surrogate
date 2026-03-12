@@ -2,8 +2,8 @@ import argparse
 import logging
 from pathlib import Path
 
-from hyper_surrogate.materials import MooneyRivlin, NeoHooke
-from hyper_surrogate.umat_handler import UMATHandler
+from hyper_surrogate.export.fortran.analytical import UMATHandler
+from hyper_surrogate.mechanics.materials import MooneyRivlin, NeoHooke
 
 logging.basicConfig(level=logging.INFO)
 
