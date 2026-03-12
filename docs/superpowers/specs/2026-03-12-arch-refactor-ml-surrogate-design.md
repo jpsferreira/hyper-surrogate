@@ -215,6 +215,10 @@ def create_datasets(
 `input_type="invariants"` produces `[I1_bar, I2_bar, J]` (3 values, frame-indifferent).
 `input_type="cauchy_green"` produces 6 unique Voigt components of C.
 
+**`target_type="energy"` returns `(energy, pk2_voigt)` tuples** — both energy and stress are always computed, because `EnergyStressLoss` needs stress ground truth to enforce dW/dI consistency. The `Normalizer` returned for targets applies only to the primary target (energy scalar).
+
+**Normalization uses standardization** (zero-mean, unit-variance) by default. `Normalizer` stores `{"mean": ndarray, "std": ndarray}`.
+
 ---
 
 ## Models Layer
@@ -236,8 +240,6 @@ class SurrogateModel(nn.Module, ABC):
         """Ordered (weights_key, bias_key, activation) per layer.
         This is the contract the Fortran exporter relies on."""
         ...
-
-    def export_weights(self) -> dict[str, ndarray]: ...
 
 @dataclass
 class LayerInfo:
@@ -314,6 +316,8 @@ class TrainingResult:
 
 Deliberately simple — small models, in-memory datasets.
 
+**Trainer handles `EnergyStressLoss` transparently:** All loss functions conform to a uniform signature `loss_fn(pred, batch)` where `batch` is the full tuple from the dataset. For `EnergyStressLoss`, the trainer detects it via `isinstance` and sets `requires_grad=True` on inputs before the forward pass, then passes `(w_pred, batch)` to the loss which unpacks `(w_true, s_true)` from batch and computes autograd gradients internally.
+
 ---
 
 ## Export Layer (Fortran Transpiler)
@@ -376,6 +380,25 @@ CONTAINS
 END MODULE
 ```
 
+**ICNN Fortran export includes analytical derivatives of the network.** Since ICNN predicts scalar energy but FEM solvers need stress (and tangent), the emitter generates `nn_forward` with two outputs: energy and its gradient w.r.t. inputs. The gradient is computed via hardcoded chain rule through each layer:
+
+- `softplus'(x) = sigmoid(x) = 1 / (1 + exp(-x))`
+- `tanh'(x) = 1 - tanh(x)^2`
+- `relu'(x) = merge(1.0, 0.0, x > 0)` (Fortran `MERGE`)
+- `identity'(x) = 1`
+
+For an L-layer ICNN, the emitter produces forward pass + backward pass (gradient accumulation) in a single subroutine. This is tractable because we only support known activation functions with simple derivatives, and the ICNN architecture has a fixed structure (wz + wx skip paths). The generated subroutine signature becomes:
+
+```fortran
+SUBROUTINE nn_forward(input, energy, stress)
+  DOUBLE PRECISION, INTENT(IN)  :: input(3)    ! [I1_bar, I2_bar, J]
+  DOUBLE PRECISION, INTENT(OUT) :: energy       ! W
+  DOUBLE PRECISION, INTENT(OUT) :: stress(3)    ! dW/dI1, dW/dI2, dW/dJ
+END SUBROUTINE
+```
+
+The caller then converts `dW/dI` to PK2 stress via the chain rule `S = 2 * (dW/dI1 * dI1/dC + dW/dI2 * dI2/dC + dW/dJ * dJ/dC)`. This final step is solver-side and deferred to adapters (post-v1). For v1, the user handles this in their wrapper.
+
 Design decisions:
 
 1. **Weights baked as `PARAMETER` arrays** — compiled into the binary. No file I/O at runtime. Necessary because UMAT environments typically cannot do I/O.
@@ -415,7 +438,7 @@ from .training.trainer import Trainer, TrainingResult
 from .training.losses import StressLoss, StressTangentLoss, EnergyStressLoss
 
 # Export
-from .export.weights import extract_weights, ExportedModel
+from .export.weights import extract_weights, ExportedModel  # extract_weights(model, in_norm?, out_norm?) -> ExportedModel
 from .export.fortran.emitter import FortranEmitter
 ```
 
@@ -437,9 +460,7 @@ train_ds, val_ds, in_norm, out_norm = hs.create_datasets(
 model = hs.MLP(input_dim=3, output_dim=6, hidden_dims=[64, 64], activation="tanh")
 result = hs.Trainer(model, train_ds, val_ds, loss_fn=hs.StressLoss()).fit()
 
-exported = hs.extract_weights(result.model)
-exported.input_normalizer = in_norm.params
-exported.output_normalizer = out_norm.params
+exported = hs.extract_weights(result.model, in_norm, out_norm)
 hs.FortranEmitter(exported).write("nn_neohooke.f90")
 ```
 
@@ -448,16 +469,14 @@ hs.FortranEmitter(exported).write("nn_neohooke.f90")
 ```python
 train_ds, val_ds, in_norm, out_norm = hs.create_datasets(
     material, n_samples=50_000,
-    input_type="invariants", target_type="energy",
+    input_type="invariants", target_type="energy",  # returns (energy, pk2_voigt) tuples
 )
 
 model = hs.ICNN(input_dim=3, hidden_dims=[64, 64], activation="softplus")
 loss = hs.EnergyStressLoss(alpha=1.0, beta=1.0)
 result = hs.Trainer(model, train_ds, val_ds, loss_fn=loss).fit()
 
-exported = hs.extract_weights(result.model)
-exported.input_normalizer = in_norm.params
-exported.output_normalizer = out_norm.params
+exported = hs.extract_weights(result.model, in_norm, out_norm)
 hs.FortranEmitter(exported).write("nn_neohooke_icnn.f90")
 ```
 
