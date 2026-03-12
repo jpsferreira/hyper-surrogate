@@ -57,6 +57,13 @@ warn_unused_ignores = "True"
 show_error_codes = "True"
 ignore_missing_imports = "True"
 
+[[tool.mypy.overrides]]
+module = [
+    "hyper_surrogate.models.*",
+    "hyper_surrogate.training.*",
+]
+warn_unused_ignores = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
