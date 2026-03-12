@@ -59,6 +59,7 @@ ignore_missing_imports = "True"
 
 [[tool.mypy.overrides]]
 module = [
+    "hyper_surrogate.data.dataset",
     "hyper_surrogate.models.*",
     "hyper_surrogate.training.*",
 ]
