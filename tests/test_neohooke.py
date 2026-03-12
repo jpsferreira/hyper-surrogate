@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 import sympy as sym
 
-from hyper_surrogate.kinematics import Kinematics as K
-from hyper_surrogate.materials import NeoHooke
+from hyper_surrogate.mechanics.kinematics import Kinematics as K
+from hyper_surrogate.mechanics.materials import NeoHooke
 from tests.mock_data import (
     CMAT_ISO0,
     CMAT_ISO_ARBITRARY,
@@ -65,14 +65,15 @@ def c_tensor(f):
 
 
 def test_sef(neohooke):
-    assert neohooke.sef == (neohooke.invariant1 - 3) * sym.Symbol("C10") + +0.25 * sym.Symbol("KBULK") * (
-        neohooke.invariant3 - 1 - 2 * sym.log(neohooke.invariant3**0.5)
+    h = neohooke.handler
+    assert neohooke.sef == (h.isochoric_invariant1 - 3) * sym.Symbol("C10") + 0.25 * sym.Symbol("KBULK") * (
+        h.invariant3 - 1 - 2 * sym.log(h.invariant3**0.5)
     )
 
 
-def test_lambdify_sef(neohooke, c_tensor):
-    sef_func = neohooke.substitute_iterator(neohooke.sef, c_tensor, {"C10": 1, "KBULK": 1})
-    sef_values = np.array(list(sef_func))
+def test_lambdify_sef(c_tensor):
+    mat = NeoHooke({"C10": 1, "KBULK": 1})
+    sef_values = mat.evaluate_energy(c_tensor)
     assert sef_values.shape == (4,)
     assert sef_values[0] == 0
     # all remaining values of SEF should be positive
@@ -101,9 +102,9 @@ def test_lambdify_sef(neohooke, c_tensor):
         ),
     ],
 )
-def test_lambdify_pk2(neohooke, c_tensor, params, expected_values):
-    pk2_func = neohooke.evaluate_iterator(neohooke.pk2(), c_tensor, **params)
-    pk2_values = np.array(list(pk2_func))
+def test_lambdify_pk2(c_tensor, params, expected_values):
+    mat = NeoHooke(params)
+    pk2_values = mat.evaluate_pk2(c_tensor)
     assert pk2_values.shape == (4, 3, 3)
     # Verify the expected values for each deformation case
     for i, expected in enumerate(expected_values):
@@ -132,9 +133,9 @@ def test_lambdify_pk2(neohooke, c_tensor, params, expected_values):
         ),
     ],
 )
-def test_lambdify_cmat(neohooke, c_tensor, params, expected_values):
-    cmat_func = neohooke.evaluate_iterator(neohooke.cmat(), c_tensor, **params)
-    cmat_values = np.array(list(cmat_func))
+def test_lambdify_cmat(c_tensor, params, expected_values):
+    mat = NeoHooke(params)
+    cmat_values = mat.evaluate_cmat(c_tensor)
     assert cmat_values.shape == (4, 3, 3, 3, 3)
     for i, expected in enumerate(expected_values):
         assert np.allclose(cmat_values[i], expected)
