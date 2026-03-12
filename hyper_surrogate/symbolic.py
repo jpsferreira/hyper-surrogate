@@ -82,9 +82,7 @@ class SymbolicHandler:
         Returns:
             Expr: The first invariant of the c_tensor.
         """
-        I3 = self.invariant3  # Determinant
-        trace = self.c_tensor.trace()  # Trace
-        return trace * (I3 ** (-Rational(1, 3)))
+        return self.c_tensor.trace() * (self.invariant3 ** (-Rational(1, 3)))
 
     @property
     def invariant2(self) -> Expr:
@@ -95,7 +93,9 @@ class SymbolicHandler:
         Returns:
             Expr: The second invariant of the c_tensor.
         """
-        return Rational(1, 2) * (self.invariant1**2 - self._c_tensor_squared().trace())
+        return (Rational(1, 2) * (self.invariant1**2 - self._c_tensor_squared().trace())) * (
+            self.invariant3 ** (-Rational(2, 3))
+        )
 
     @property
     def invariant3(self) -> Expr:
