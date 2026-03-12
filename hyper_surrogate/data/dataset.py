@@ -10,7 +10,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    Dataset = object
+    Dataset = object  # type: ignore[misc,assignment]
 
 
 class Normalizer:

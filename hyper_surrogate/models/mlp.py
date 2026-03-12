@@ -46,7 +46,7 @@ class MLP(SurrogateModel):
         return self._output_dim
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.layers(x)
+        return self.layers(x)  # type: ignore[no-any-return]
 
     def layer_sequence(self) -> list[LayerInfo]:
         result = []

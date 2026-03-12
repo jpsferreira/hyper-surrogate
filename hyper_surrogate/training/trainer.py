@@ -31,8 +31,8 @@ class Trainer:
         device: str = "cpu",
     ) -> None:
         self.model = model.to(device)
-        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        self.val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        self.train_loader: DataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)  # type: ignore[arg-type]
+        self.val_loader: DataLoader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)  # type: ignore[arg-type]
         self.loss_fn = loss_fn
         self.device = device
         self.max_epochs = max_epochs
@@ -58,11 +58,11 @@ class Trainer:
             else:
                 w_true = y.to(self.device)
                 s_true = torch.zeros_like(x)
-            return self.loss_fn(pred, w_true, x, s_true)
+            return self.loss_fn(pred, w_true, x, s_true)  # type: ignore[no-any-return]
         else:
             pred = self.model(x)
             y = y[0].to(self.device) if isinstance(y, tuple | list) else y.to(self.device)
-            return self.loss_fn(pred, y)
+            return self.loss_fn(pred, y)  # type: ignore[no-any-return]
 
     def _train_epoch(self) -> float:
         self.model.train()

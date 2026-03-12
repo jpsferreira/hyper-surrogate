@@ -66,7 +66,7 @@ class ICNN(SurrogateModel):
             z = self._activation(F.linear(z, F.softplus(wz.weight)) + wx(x))
 
         # Output layer
-        return F.linear(z, F.softplus(self.wz_final.weight)) + self.wx_final(x)
+        return F.linear(z, F.softplus(self.wz_final.weight)) + self.wx_final(x)  # type: ignore[no-any-return]
 
     def layer_sequence(self) -> list[LayerInfo]:
         result = []
