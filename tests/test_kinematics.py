@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from hyper_surrogate.deformation_gradient import DeformationGradientGenerator as FGen
-from hyper_surrogate.kinematics import Kinematics
+from hyper_surrogate.mechanics.kinematics import Kinematics
 
 SIZE = 2
 
@@ -43,22 +43,40 @@ def test_jacobian(def_gradients, K):
     assert np.allclose(jacobians, np.array([np.linalg.det(f) for f in def_gradients]))
 
 
-def test_invariant1(def_gradients, K):
-    invariant1 = K.invariant1(def_gradients)
-    assert np.allclose(invariant1, np.array([np.trace(f) for f in def_gradients]))
+def test_trace_invariant(def_gradients, K):
+    result = K.trace_invariant(def_gradients)
+    assert np.allclose(result, np.array([np.trace(f) for f in def_gradients]))
 
 
-def test_invariant2(def_gradients, K):
-    invariant2 = K.invariant2(def_gradients)
+def test_quadratic_invariant(def_gradients, K):
+    result = K.quadratic_invariant(def_gradients)
     assert np.allclose(
-        invariant2,
+        result,
         np.array([0.5 * (np.trace(f) ** 2 - np.trace(np.matmul(f, f))) for f in def_gradients]),
     )
 
 
-def test_invariant3(def_gradients, K):
-    invariant3 = K.invariant3(def_gradients)
-    assert np.allclose(invariant3, np.array([np.linalg.det(f) for f in def_gradients]))
+def test_det_invariant(def_gradients, K):
+    result = K.det_invariant(def_gradients)
+    assert np.allclose(result, np.array([np.linalg.det(f) for f in def_gradients]))
+
+
+def test_isochoric_invariant1(def_gradients, K):
+    c = K.right_cauchy_green(def_gradients)
+    result = K.isochoric_invariant1(c)
+    # Manual computation: tr(C) * det(C)^(-1/3)
+    expected = np.array([np.trace(c[i]) * np.linalg.det(c[i]) ** (-1.0 / 3.0) for i in range(SIZE)])
+    assert np.allclose(result, expected)
+
+
+def test_isochoric_invariant2(def_gradients, K):
+    c = K.right_cauchy_green(def_gradients)
+    result = K.isochoric_invariant2(c)
+    # Manual computation: 0.5*(I1^2 - tr(C^2)) * det(C)^(-2/3)
+    expected = np.array([
+        0.5 * (np.trace(c[i]) ** 2 - np.trace(c[i] @ c[i])) * np.linalg.det(c[i]) ** (-2.0 / 3.0) for i in range(SIZE)
+    ])
+    assert np.allclose(result, expected)
 
 
 def test_pushforward(def_gradients, K):
