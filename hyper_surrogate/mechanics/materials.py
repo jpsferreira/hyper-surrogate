@@ -5,7 +5,7 @@ from functools import cached_property
 from typing import Any, ClassVar
 
 import numpy as np
-from sympy import Expr, Matrix, Symbol, log
+from sympy import Expr, Matrix, Rational, Symbol, log
 
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 
@@ -24,6 +24,13 @@ class Material:
 
     @property
     def sef(self) -> Expr:
+        raise NotImplementedError
+
+    def sef_from_invariants(self, i1_bar: Symbol, i2_bar: Symbol, j: Symbol) -> Expr:
+        """Return SEF as a function of invariant symbols (I1_bar, I2_bar, J).
+
+        Override in subclasses to enable energy gradient computation w.r.t. invariants.
+        """
         raise NotImplementedError
 
     @cached_property
@@ -59,6 +66,29 @@ class Material:
             result = self.cmat_func(c.flatten(), *param_values)
             results.append(np.array(result, dtype=float))
         return np.array(results)
+
+    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
+        """Compute dW/d(I1_bar, I2_bar, J) for (N,3,3) C tensors. Returns (N,3)."""
+        from sympy import diff
+        from sympy import lambdify as sym_lambdify
+
+        from hyper_surrogate.mechanics.kinematics import Kinematics
+
+        i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
+        W = self.sef_from_invariants(i1s, i2s, js)
+        dW = [diff(W, s) for s in (i1s, i2s, js)]
+
+        param_syms = list(self._symbols.values())
+        fn = sym_lambdify((i1s, i2s, js, *param_syms), dW, modules="numpy")
+
+        i1 = Kinematics.isochoric_invariant1(c_batch)
+        i2 = Kinematics.isochoric_invariant2(c_batch)
+        j = np.sqrt(Kinematics.det_invariant(c_batch))
+
+        param_vals = list(self._params.values())
+        results = fn(i1, i2, j, *param_vals)
+        n = len(c_batch)
+        return np.column_stack([np.broadcast_to(np.asarray(r, dtype=float), (n,)) for r in results])
 
     def evaluate_energy(self, c_batch: np.ndarray) -> np.ndarray:
         """Evaluate strain energy for (N,3,3) C tensors. Returns (N,)."""
@@ -96,11 +126,20 @@ class NeoHooke(Material):
         params = {**self.DEFAULT_PARAMS, **(parameters or {})}
         super().__init__(params)
 
+    def _volumetric(self, j: Symbol) -> Expr:
+        KBULK = self._symbols["KBULK"]
+        i3 = j**2
+        return Rational(1, 4) * KBULK * (i3 - 1 - 2 * log(i3 ** Rational(1, 2)))
+
     @property
     def sef(self) -> Expr:
         h = self._handler
         C10, KBULK = self._symbols["C10"], self._symbols["KBULK"]
         return (h.isochoric_invariant1 - 3) * C10 + 0.25 * KBULK * (h.invariant3 - 1 - 2 * log(h.invariant3**0.5))
+
+    def sef_from_invariants(self, i1_bar: Symbol, i2_bar: Symbol, j: Symbol) -> Expr:
+        C10 = self._symbols["C10"]
+        return (i1_bar - 3) * C10 + self._volumetric(j)
 
 
 class MooneyRivlin(Material):
@@ -109,6 +148,11 @@ class MooneyRivlin(Material):
     def __init__(self, parameters: dict[str, float] | None = None) -> None:
         params = {**self.DEFAULT_PARAMS, **(parameters or {})}
         super().__init__(params)
+
+    def _volumetric(self, j: Symbol) -> Expr:
+        KBULK = self._symbols["KBULK"]
+        i3 = j**2
+        return Rational(1, 4) * KBULK * (i3 - 1 - 2 * log(i3 ** Rational(1, 2)))
 
     @property
     def sef(self) -> Expr:
@@ -119,3 +163,7 @@ class MooneyRivlin(Material):
             + (h.isochoric_invariant2 - 3) * C01
             + 0.25 * KBULK * (h.invariant3 - 1 - 2 * log(h.invariant3**0.5))
         )
+
+    def sef_from_invariants(self, i1_bar: Symbol, i2_bar: Symbol, j: Symbol) -> Expr:
+        C10, C01 = self._symbols["C10"], self._symbols["C01"]
+        return (i1_bar - 3) * C10 + (i2_bar - 3) * C01 + self._volumetric(j)

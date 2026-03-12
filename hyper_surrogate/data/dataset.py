@@ -101,10 +101,11 @@ def create_datasets(
     if target_type == "energy":
         energy = material.evaluate_energy(C)  # (N,)
         targets_raw = energy.reshape(-1, 1)
-        # For energy loss, we also need stress — store as tuple.
-        # IMPORTANT: Neither energy nor stress is normalized here.
-        # EnergyStressLoss operates entirely in raw physical space.
-        # Only inputs are normalized (the NN sees normalized invariants).
+
+        # Stress target must match input dimensionality for EnergyStressLoss.
+        # Invariant inputs (3D) → dW/d(invariants); cauchy_green (6D) → PK2 Voigt.
+        stress_target = material.evaluate_energy_grad_invariants(C) if input_type == "invariants" else pk2_voigt
+
         in_norm = Normalizer().fit(inputs)
         inputs_normed = in_norm.transform(inputs)
 
@@ -120,11 +121,11 @@ def create_datasets(
 
         train_ds = MaterialDataset(
             inputs_normed[train_idx].astype(np.float32),
-            (targets_raw[train_idx].astype(np.float32), pk2_voigt[train_idx].astype(np.float32)),
+            (targets_raw[train_idx].astype(np.float32), stress_target[train_idx].astype(np.float32)),
         )
         val_ds = MaterialDataset(
             inputs_normed[val_idx].astype(np.float32),
-            (targets_raw[val_idx].astype(np.float32), pk2_voigt[val_idx].astype(np.float32)),
+            (targets_raw[val_idx].astype(np.float32), stress_target[val_idx].astype(np.float32)),
         )
         return train_ds, val_ds, in_norm, energy_norm
 

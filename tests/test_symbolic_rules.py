@@ -220,13 +220,13 @@ def test_to_voigt_4_with_wrong_shape(handler):
         handler.to_voigt_4(np.ones((3, 4, 3, 4)))
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_pushforward_2nd_order(handler, pk2, f):
     # pushforward pk2 to cauchy stress tensor. assert shape
     assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
 
 
-@pytest.mark.skip(reason="Slow test")
+@pytest.mark.slow
 def test_pushforward_4th_order(handler, cmat, f):
     # pushforward cmat to spatial stiffness tensor. assert shape
     assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)

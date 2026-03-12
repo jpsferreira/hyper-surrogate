@@ -6,6 +6,7 @@ import pytest
 torch = pytest.importorskip("torch")
 
 
+@pytest.mark.slow
 def test_mlp_end_to_end():
     """Full pipeline: data -> train -> export -> Fortran."""
     import hyper_surrogate as hs
@@ -39,6 +40,7 @@ def test_mlp_end_to_end():
         assert "MATMUL" in code
 
 
+@pytest.mark.slow
 def test_icnn_end_to_end():
     """ICNN pipeline: data -> train -> export."""
     import hyper_surrogate as hs

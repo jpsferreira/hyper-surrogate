@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 
@@ -59,6 +60,7 @@ class TestCreateDatasets:
         assert x.shape == (3,)  # I1_bar, I2_bar, J
         assert y.shape == (6,)  # PK2 Voigt
 
+    @pytest.mark.slow
     def test_create_energy(self):
         from hyper_surrogate.mechanics.materials import NeoHooke
 
@@ -71,6 +73,6 @@ class TestCreateDatasets:
         )
         x, y = train_ds[0]
         assert x.shape == (3,)
-        # energy target is (energy_scalar, pk2_voigt_6) = tuple of 2
+        # energy target is (energy_scalar, dW_dI_3) = tuple of 2
         assert isinstance(y, tuple)
-        assert y[1].shape == (6,)
+        assert y[1].shape == (3,)  # dW/d(invariants) matches input dim
