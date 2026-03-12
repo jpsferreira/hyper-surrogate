@@ -1,5 +1,35 @@
+# Mechanics (always available)
+# Data (always available)
+from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
+from hyper_surrogate.data.deformation import DeformationGenerator
 from hyper_surrogate.mechanics.kinematics import Kinematics
 from hyper_surrogate.mechanics.materials import Material, MooneyRivlin, NeoHooke
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 
-__all__ = ["SymbolicHandler", "Kinematics", "Material", "NeoHooke", "MooneyRivlin"]
+# ML (requires torch)
+try:
+    from hyper_surrogate.models.icnn import ICNN  # noqa: F401
+    from hyper_surrogate.models.mlp import MLP  # noqa: F401
+    from hyper_surrogate.training.losses import EnergyStressLoss, StressLoss, StressTangentLoss  # noqa: F401
+    from hyper_surrogate.training.trainer import Trainer, TrainingResult  # noqa: F401
+except ImportError:
+    pass
+
+# Export (requires torch for weights extraction)
+try:
+    from hyper_surrogate.export.fortran.emitter import FortranEmitter  # noqa: F401
+    from hyper_surrogate.export.weights import ExportedModel, extract_weights  # noqa: F401
+except ImportError:
+    pass
+
+__all__ = [
+    "SymbolicHandler",
+    "Kinematics",
+    "Material",
+    "NeoHooke",
+    "MooneyRivlin",
+    "DeformationGenerator",
+    "MaterialDataset",
+    "Normalizer",
+    "create_datasets",
+]
