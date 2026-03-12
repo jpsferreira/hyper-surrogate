@@ -1,4 +1,5 @@
-from typing import Any, Generator, Iterable, List
+from collections.abc import Generator, Iterable
+from typing import Any
 
 import numpy as np
 from sympy import (
@@ -27,7 +28,7 @@ class SymbolicHandler:
         self.c_tensor = self._c_tensor()
         self.f_tensor = self._f_tensor()
 
-    def f_symbols(self) -> List[Symbol]:
+    def f_symbols(self) -> list[Symbol]:
         """
         Return the f_tensor flattened symbols.
 
@@ -45,7 +46,7 @@ class SymbolicHandler:
         """
         return ImmutableMatrix(3, 3, lambda i, j: Symbol(f"F_{i + 1}{j + 1}"))
 
-    def c_symbols(self) -> List[Symbol]:
+    def c_symbols(self) -> list[Symbol]:
         """
         Return the c_tensor flattened symbols.
 

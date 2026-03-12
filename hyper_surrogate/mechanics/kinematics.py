@@ -81,7 +81,7 @@ class Kinematics:
     @staticmethod
     def isochoric_invariant1(c: np.ndarray) -> np.ndarray:
         """Isochoric first invariant: tr(C) * det(C)^(-1/3)."""
-        return np.einsum("nii->n", c) * np.linalg.det(c) ** (-1.0 / 3.0)
+        return np.einsum("nii->n", c) * np.linalg.det(c) ** (-1.0 / 3.0)  # type: ignore[no-any-return]
 
     @staticmethod
     def isochoric_invariant2(c: np.ndarray) -> np.ndarray:
@@ -89,7 +89,7 @@ class Kinematics:
         i1 = np.einsum("nii->n", c)
         i1_sq = i1**2
         tr_c2 = np.einsum("nij,nji->n", c, c)
-        return 0.5 * (i1_sq - tr_c2) * np.linalg.det(c) ** (-2.0 / 3.0)
+        return 0.5 * (i1_sq - tr_c2) * np.linalg.det(c) ** (-2.0 / 3.0)  # type: ignore[no-any-return]
 
     @staticmethod
     def right_cauchy_green(f: np.ndarray) -> Any:

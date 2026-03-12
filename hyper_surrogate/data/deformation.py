@@ -38,7 +38,7 @@ class DeformationGenerator:
         axes = self._rng.integers(0, 3, size=n)
         angles = self._rng.uniform(0, np.pi, size=n)
         rotations = []
-        for ax, ang in zip(axes, angles):
+        for ax, ang in zip(axes, angles, strict=False):
             c, s = np.cos(ang), np.sin(ang)
             if ax == 0:
                 R = np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
@@ -51,7 +51,7 @@ class DeformationGenerator:
 
     @staticmethod
     def _rotate(F: np.ndarray, R: np.ndarray) -> np.ndarray:
-        return np.einsum("nij,njk,nlk->nil", R, F, R)
+        return np.einsum("nij,njk,nlk->nil", R, F, R)  # type: ignore[no-any-return]
 
     def combined(
         self,
@@ -66,4 +66,4 @@ class DeformationGenerator:
         fu = self._rotate(fu, r1)
         fs = self._rotate(fs, r2)
         fb = self._rotate(fb, r3)
-        return np.matmul(np.matmul(fb, fu), fs)
+        return np.matmul(np.matmul(fb, fu), fs)  # type: ignore[no-any-return]

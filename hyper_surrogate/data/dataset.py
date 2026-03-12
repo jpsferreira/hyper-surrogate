@@ -10,7 +10,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    Dataset = object  # type: ignore[assignment,misc]
+    Dataset = object
 
 
 class Normalizer:
@@ -23,18 +23,18 @@ class Normalizer:
     def fit(self, data: np.ndarray) -> Normalizer:
         self._mean = data.mean(axis=0)
         self._std = data.std(axis=0)
-        self._std[self._std < 1e-12] = 1.0  # avoid division by zero
+        self._std[self._std < 1e-12] = 1.0  # type: ignore[index,operator]  # avoid division by zero
         return self
 
     def transform(self, data: np.ndarray) -> np.ndarray:
-        return (data - self._mean) / self._std
+        return (data - self._mean) / self._std  # type: ignore[no-any-return]
 
     def inverse_transform(self, data: np.ndarray) -> np.ndarray:
-        return data * self._std + self._mean
+        return data * self._std + self._mean  # type: ignore[no-any-return]
 
     @property
     def params(self) -> dict[str, np.ndarray]:
-        return {"mean": self._mean, "std": self._std}
+        return {"mean": self._mean, "std": self._std}  # type: ignore[dict-item]
 
 
 class MaterialDataset(Dataset):

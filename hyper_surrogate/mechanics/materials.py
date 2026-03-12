@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import cached_property
-from typing import Any, Callable, ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from sympy import Expr, Matrix, Symbol, log
@@ -35,11 +36,11 @@ class Material:
 
     @cached_property
     def pk2_func(self) -> Callable:
-        return self._handler.lambdify(self.pk2_expr, *self._symbols.values())
+        return self._handler.lambdify(self.pk2_expr, *self._symbols.values())  # type: ignore[no-any-return]
 
     @cached_property
     def cmat_func(self) -> Callable:
-        return self._handler.lambdify(self.cmat_expr, *self._symbols.values())
+        return self._handler.lambdify(self.cmat_expr, *self._symbols.values())  # type: ignore[no-any-return]
 
     def evaluate_pk2(self, c_batch: np.ndarray) -> np.ndarray:
         """Vectorized PK2 evaluation over (N,3,3) C tensors."""
@@ -84,7 +85,7 @@ class Material:
         smat = self._handler.spatial_tangent(self.pk2_expr, f)
         if use_jaumann_rate:
             sigma = self._handler.cauchy(self.sef, f)
-            smat = smat + self._handler.jaumann_correction(sigma)
+            smat = smat + self._handler.jaumann_correction(sigma)  # type: ignore[call-arg]
         return SymbolicHandler.to_voigt_4(smat)
 
 

@@ -62,7 +62,7 @@ class ICNN(SurrogateModel):
         z = self._activation(self.wx_layers[0](x))
 
         # Subsequent hidden layers (z-path with non-neg weights + x skip)
-        for wz, wx in zip(self.wz_layers, self.wx_layers[1:]):
+        for wz, wx in zip(self.wz_layers, self.wx_layers[1:], strict=False):
             z = self._activation(F.linear(z, F.softplus(wz.weight)) + wx(x))
 
         # Output layer

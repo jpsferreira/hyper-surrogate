@@ -1,7 +1,6 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import List
 
 import sympy as sym
 
@@ -21,7 +20,7 @@ class UMATHandler:
         self.smat_code = None
 
     @staticmethod
-    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> List[str]:
+    def common_subexpressions(tensor: sym.Matrix, var_name: str) -> list[str]:
         """
         Perform common subexpression elimination on a vector or matrix and generate Fortran code.
 
@@ -117,7 +116,7 @@ class UMATHandler:
         logging.info("Generating tangent matrix...")
         return self.material.tangent_voigt(self.f, use_jaumann_rate=True).subs(self.sub_exp)
 
-    def generate_props_code(self) -> List[str]:
+    def generate_props_code(self) -> list[str]:
         """
         Generate the Fortran code for material properties.
 
@@ -130,7 +129,7 @@ class UMATHandler:
         props_code = [f"{param} = PROPS({i + 1})" for i, param in enumerate(parameters_names)]
         return props_init + props_code
 
-    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> List[str]:
+    def generate_expression(self, tensor: sym.Matrix, var_name: str) -> list[str]:
         logging.info(f"Generating CSE for {var_name}...")
         return self.common_subexpressions(tensor, var_name)
 

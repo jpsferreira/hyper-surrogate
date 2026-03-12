@@ -52,7 +52,7 @@ class Trainer:
         if self._is_energy_loss:
             x.requires_grad_(True)
             pred = self.model(x)
-            if isinstance(y, (tuple, list)):
+            if isinstance(y, tuple | list):
                 w_true = y[0].to(self.device)
                 s_true = y[1].to(self.device)
             else:
@@ -61,7 +61,7 @@ class Trainer:
             return self.loss_fn(pred, w_true, x, s_true)
         else:
             pred = self.model(x)
-            y = y[0].to(self.device) if isinstance(y, (tuple, list)) else y.to(self.device)
+            y = y[0].to(self.device) if isinstance(y, tuple | list) else y.to(self.device)
             return self.loss_fn(pred, y)
 
     def _train_epoch(self) -> float:
