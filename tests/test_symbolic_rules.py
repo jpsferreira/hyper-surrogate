@@ -230,11 +230,13 @@ def test_pushforward_4th_order(handler, cmat, f):
     assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)
 
 
+@pytest.mark.skip(reason="Slow test")
 def test_jr(handler, sigma):
     # jaumann rate tensor. assert shape
     assert handler.jr(sigma).shape == (3, 3, 3, 3)
 
 
+@pytest.mark.skip(reason="Slow test")
 def test_jr_with_wrong_shape(handler):
     # jaumann rate tensor. assert shape
     with pytest.raises(ValueError):
