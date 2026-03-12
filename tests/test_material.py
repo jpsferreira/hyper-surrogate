@@ -57,8 +57,8 @@ def test_lambdify_invariant2(material, c_tensor):
     inv2_func = material.substitute_iterator(material.invariant2, c_tensor)
     inv2_results = np.array(list(inv2_func))
     assert inv2_results.shape == (2,)
-    assert inv2_results[0] == 0
-    assert inv2_results[1] == 0
+    assert inv2_results[0] == 3.0
+    assert inv2_results[1] != 3.0
 
 
 def test_lambdify_invariant3(material, c_tensor):

@@ -72,7 +72,7 @@ class SymbolicHandler:
             Matrix: The square of the c_tensor.
         """
         # matrix product
-        return self.c_tensor.multiply(self.c_tensor)
+        return self.c_tensor**2
 
     @property
     def invariant1(self) -> Expr:
@@ -90,12 +90,12 @@ class SymbolicHandler:
     def invariant2(self) -> Expr:
         """
         Compute the second invariant of the c_tensor.
+        I2 = 1/2 * (I1^2 - trace(c_tensor^2))
 
         Returns:
             Expr: The second invariant of the c_tensor.
         """
-        c_squared = self._c_tensor_squared()
-        return Rational(1, 2) * (self.c_tensor.multiply(self.c_tensor).trace() - c_squared.trace())
+        return Rational(1, 2) * (self.invariant1**2 - self._c_tensor_squared().trace())
 
     @property
     def invariant3(self) -> Expr:
