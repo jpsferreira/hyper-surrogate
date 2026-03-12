@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 import sympy as sym
 
-from hyper_surrogate.deformation_gradient import DeformationGradientGenerator as FGen
-from hyper_surrogate.kinematics import Kinematics as K
+from hyper_surrogate.data.deformation import DeformationGenerator
+from hyper_surrogate.mechanics.kinematics import Kinematics as K
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 
 SIZE = 2
@@ -12,7 +12,7 @@ SIZE = 2
 # numeric fixtures
 @pytest.fixture
 def def_gradients() -> np.ndarray:
-    return FGen(seed=42, size=SIZE).generate()
+    return DeformationGenerator(seed=42).combined(SIZE)
 
 
 @pytest.fixture

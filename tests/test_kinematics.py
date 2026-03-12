@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from hyper_surrogate.deformation_gradient import DeformationGradientGenerator as FGen
+from hyper_surrogate.data.deformation import DeformationGenerator
 from hyper_surrogate.mechanics.kinematics import Kinematics
 
 SIZE = 2
@@ -14,7 +14,7 @@ def K():
 
 @pytest.fixture
 def def_gradients():
-    return FGen(seed=42, size=SIZE).generate()
+    return DeformationGenerator(seed=42).combined(SIZE)
 
 
 # kinematics testing
