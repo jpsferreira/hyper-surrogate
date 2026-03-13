@@ -43,8 +43,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups --extra ml
 
-      - name: Run tests
-        run: uv run pytest --doctest-modules tests -m "" --cov --cov-config=pyproject.toml --cov-report=xml
+      - name: Run tests (fast on PR, all on main)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            uv run pytest --doctest-modules tests -m "" --cov --cov-config=pyproject.toml --cov-report=xml
+          else
+            uv run pytest --doctest-modules tests --cov --cov-config=pyproject.toml --cov-report=xml
+          fi
 
       - name: Run mypy
         run: uv run mypy

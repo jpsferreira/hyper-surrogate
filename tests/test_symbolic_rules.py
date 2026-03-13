@@ -130,6 +130,7 @@ def test_symbolic_subs_in_pk2(handler, pk2, right_cauchys, sef_args):
     )
 
 
+@pytest.mark.slow
 def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
     # right_cauchys # (N, 3, 3)
     # for each c_tensor in cmat, substitute the cmat tensor with c values and material parameters values.
@@ -189,6 +190,7 @@ def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     assert all(isinstance(pk2_value[i, j], float) for pk2_value in pk2_values for i in range(3) for j in range(3))
 
 
+@pytest.mark.slow
 def test_cmat_lambdify_iterator(handler, sef_args, right_cauchys, cmat):
     # cmat function
     cmat_func = handler.lambdify(cmat, *sef_args.keys())
@@ -209,6 +211,7 @@ def test_to_voigt_2_with_wrong_shape(handler):
         handler.to_voigt_2(np.ones((3, 4)))
 
 
+@pytest.mark.slow
 def test_to_voigt_4(handler, cmat):
     # reduce order of cmat. assert shape
     assert handler.to_voigt_4(cmat).shape == (6, 6)
