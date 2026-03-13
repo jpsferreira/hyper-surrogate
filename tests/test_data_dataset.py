@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import numpy as np
-import pytest
 
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 
@@ -60,17 +61,23 @@ class TestCreateDatasets:
         assert x.shape == (3,)  # I1_bar, I2_bar, J
         assert y.shape == (6,)  # PK2 Voigt
 
-    @pytest.mark.slow
     def test_create_energy(self):
         from hyper_surrogate.mechanics.materials import NeoHooke
 
         material = NeoHooke({"C10": 0.5, "KBULK": 1000.0})
-        train_ds, val_ds, in_norm, out_norm = create_datasets(
-            material,
-            n_samples=100,
-            input_type="invariants",
-            target_type="energy",
-        )
+
+        # Mock the slow SymPy-based energy gradient computation
+        def fake_energy_grad(c_batch: np.ndarray) -> np.ndarray:
+            n = len(c_batch)
+            return np.random.default_rng(0).standard_normal((n, 3))
+
+        with patch.object(material, "evaluate_energy_grad_invariants", side_effect=fake_energy_grad):
+            train_ds, val_ds, in_norm, out_norm = create_datasets(
+                material,
+                n_samples=100,
+                input_type="invariants",
+                target_type="energy",
+            )
         x, y = train_ds[0]
         assert x.shape == (3,)
         # energy target is (energy_scalar, dW_dI_3) = tuple of 2

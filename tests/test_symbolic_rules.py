@@ -54,16 +54,6 @@ def f() -> sym.Matrix:
     return sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"F_{i + 1}{j + 1})"))
 
 
-@pytest.fixture
-def sigma(handler, sef, f) -> sym.Matrix:
-    return handler.cauchy(sef, f)
-
-
-@pytest.fixture
-def smat(handler, sef, f) -> sym.Matrix:
-    return handler.spatial_tangent(sef, f)
-
-
 # testing
 
 
@@ -148,39 +138,6 @@ def test_symbolic_subs_in_cmat(handler, cmat, right_cauchys, sef_args):
     )
 
 
-# skip this test for now. implement the functionality in the handler and test it.
-@pytest.mark.skip(reason="Feature not implemented yet")
-def test_symbolic_subs_in_sigma(handler, sigma, right_cauchys, sef_args):
-    # right_cauchys # (N, 3, 3)
-    #
-    # for each c_tensor in sigma, substitute the sigma tensor with c values and material parameters values.
-    assert all(
-        isinstance(subs, sym.Matrix)
-        and subs.shape == (3, 3)
-        and all(isinstance(subs[i, j], sym.Expr) for i in range(3) for j in range(3))
-        for subs in handler.substitute_iterator(sigma, right_cauchys, sef_args)
-        # TODO: incorporate iterator over multiple matrices: right cauchys and def_gradients
-    )
-
-
-@pytest.mark.skip(reason="Feature not implemented yet")
-def test_symbolic_subs_in_smat(handler, smat, right_cauchys, sef_args):
-    # right_cauchys # (N, 3, 3)
-    # for each c_tensor in cmat, substitute the cmat tensor with c values and material parameters values.
-    assert all(
-        isinstance(subs, sym.MutableDenseNDimArray)
-        and subs.shape == (3, 3, 3, 3)
-        and all(
-            isinstance(subs[i, j, k, ll], sym.Expr)
-            for i in range(3)
-            for j in range(3)
-            for k in range(3)
-            for ll in range(3)
-        )
-        for subs in handler.substitute_iterator(smat, right_cauchys, sef_args)
-    )
-
-
 def test_pk2_lambdify_iterator(handler, sef_args, right_cauchys, pk2):
     # pk2 function
     pk2_func = handler.lambdify(pk2, *sef_args.keys())
@@ -211,10 +168,14 @@ def test_to_voigt_2_with_wrong_shape(handler):
         handler.to_voigt_2(np.ones((3, 4)))
 
 
-@pytest.mark.slow
-def test_to_voigt_4(handler, cmat):
-    # reduce order of cmat. assert shape
-    assert handler.to_voigt_4(cmat).shape == (6, 6)
+def test_to_voigt_4(handler):
+    # Use a lightweight symbolic (3,3,3,3) tensor instead of deriving cmat
+    x = sym.Symbol("x")
+    lightweight_cmat = sym.ImmutableDenseNDimArray(
+        [x if i == j == k == ll else 0 for i in range(3) for j in range(3) for k in range(3) for ll in range(3)],
+        (3, 3, 3, 3),
+    )
+    assert handler.to_voigt_4(lightweight_cmat).shape == (6, 6)
 
 
 def test_to_voigt_4_with_wrong_shape(handler):
@@ -223,25 +184,28 @@ def test_to_voigt_4_with_wrong_shape(handler):
         handler.to_voigt_4(np.ones((3, 4, 3, 4)))
 
 
-@pytest.mark.slow
-def test_pushforward_2nd_order(handler, pk2, f):
-    # pushforward pk2 to cauchy stress tensor. assert shape
-    assert handler.pushforward_2nd_order(pk2, f).shape == (3, 3)
+def test_pushforward_2nd_order(handler, f):
+    # Use a lightweight symbolic (3,3) matrix instead of deriving pk2
+    lightweight_pk2 = sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"S_{i}{j}"))
+    assert handler.pushforward_2nd_order(lightweight_pk2, f).shape == (3, 3)
 
 
-@pytest.mark.slow
-def test_pushforward_4th_order(handler, cmat, f):
-    # pushforward cmat to spatial stiffness tensor. assert shape
-    assert handler.pushforward_4th_order(cmat, f).shape == (3, 3, 3, 3)
+def test_pushforward_4th_order(handler, f):
+    # Use a sparse symbolic (3,3,3,3) tensor — only diagonal entries nonzero
+    x = sym.Symbol("x")
+    lightweight_cmat = sym.ImmutableDenseNDimArray(
+        [x if i == j == k == ll else 0 for i in range(3) for j in range(3) for k in range(3) for ll in range(3)],
+        (3, 3, 3, 3),
+    )
+    assert handler.pushforward_4th_order(lightweight_cmat, f).shape == (3, 3, 3, 3)
 
 
-@pytest.mark.slow
-def test_jr(handler, sigma):
-    # jaumann rate tensor. assert shape
-    assert handler.jr(sigma).shape == (3, 3, 3, 3)
+def test_jr(handler):
+    # Use a lightweight symbolic sigma instead of deriving through cauchy
+    lightweight_sigma = sym.Matrix(3, 3, lambda i, j: sym.Symbol(f"sig_{i}{j}"))
+    assert handler.jr(lightweight_sigma).shape == (3, 3, 3, 3)
 
 
-@pytest.mark.slow
 def test_jr_with_wrong_shape(handler):
     # jaumann rate tensor. assert shape
     with pytest.raises(ValueError):

@@ -133,8 +133,25 @@ Visualize deformation data:
 ```python
 from hyper_surrogate.reporting.reporter import Reporter
 
-reporter = Reporter(C)  # (N, 3, 3) tensor batch
-reporter.fig_eigenvalues()
-reporter.fig_determinants()
+reporter = Reporter(C)  # (N, 3, 3) right Cauchy-Green batch
+
+# Individual figures
+reporter.fig_eigenvalues()          # eigenvalues of C (per-component)
+reporter.fig_determinants()         # det(C) histogram
+reporter.fig_invariants()           # I1_bar, I2_bar, J histograms
+reporter.fig_principal_stretches()  # sorted principal stretches
+reporter.fig_volume_change()        # J histogram with J=1 reference line
+
+# Summary statistics
+stats = reporter.basic_statistics()  # per-quantity mean, std, min, max
+
+# Combined PDF report (all figures)
+reporter.generate_report("report/")
+```
+
+You can also pass deformation gradients directly:
+
+```python
+reporter = Reporter(F, tensor_type="F")  # computes C = F^T F internally
 reporter.generate_report("report/")
 ```
