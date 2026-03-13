@@ -109,6 +109,11 @@ def create_datasets(
         in_norm = Normalizer().fit(inputs)
         inputs_normed = in_norm.transform(inputs)
 
+        # EnergyStressLoss computes dW/d(x_norm) via autograd. Since
+        # x_norm = (I - mean) / std, the chain rule gives
+        # dW/d(x_norm) = dW/dI * std. Scale the stress targets to match.
+        stress_target_scaled = stress_target * in_norm.params["std"]
+
         # Split
         n_val = int(n_samples * val_fraction)
         rng = np.random.default_rng(seed)
@@ -121,11 +126,11 @@ def create_datasets(
 
         train_ds = MaterialDataset(
             inputs_normed[train_idx].astype(np.float32),
-            (targets_raw[train_idx].astype(np.float32), stress_target[train_idx].astype(np.float32)),
+            (targets_raw[train_idx].astype(np.float32), stress_target_scaled[train_idx].astype(np.float32)),
         )
         val_ds = MaterialDataset(
             inputs_normed[val_idx].astype(np.float32),
-            (targets_raw[val_idx].astype(np.float32), stress_target[val_idx].astype(np.float32)),
+            (targets_raw[val_idx].astype(np.float32), stress_target_scaled[val_idx].astype(np.float32)),
         )
         return train_ds, val_ds, in_norm, energy_norm
 
