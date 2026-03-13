@@ -1,5 +1,18 @@
 docs/source
 .worktrees/
+.DS_Store
+
+# Demo artifacts (not part of the library)
+demo.py
+create_demo_animation.py
+create_preview.py
+record_demo.sh
+DEMO_README.md
+hyper_surrogate_demo.*
+
+# Fortran build artifacts
+scripts/
+examples/outputs/
 
 # From https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
 

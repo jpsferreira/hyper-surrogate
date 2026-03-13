@@ -2,53 +2,43 @@
 
 ## From source
 
-- Clone the repository
+Clone the repository:
 
-```zsh
+```bash
 git clone https://github.com/jpsferreira/hyper-surrogate.git
 cd hyper-surrogate
 ```
 
-- Install dependencies
+Install dependencies with [uv](https://docs.astral.sh/uv/):
 
-```zsh
-poetry install
+```bash
+uv sync --all-groups
 ```
 
-or
+To also install the ML extras (PyTorch):
 
-```zsh
-uv install
+```bash
+uv sync --all-groups --extra ml
 ```
 
-- Load python environment
+Run tests:
 
-```zsh
-poetry shell
-```
-
-or
-
-```zsh
-source .venv/bin/activate
-```
-
-- Run tests
-
-```zsh
-pytest
+```bash
+uv run pytest
 ```
 
 ## From PyPI
 
-```zsh
+```bash
 pip install hyper-surrogate
 ```
 
-```zsh
-poetry add hyper-surrogate
+```bash
+uv add hyper-surrogate
 ```
 
-```zsh
-uv add hyper-surrogate
+With ML support:
+
+```bash
+pip install hyper-surrogate[ml]
 ```

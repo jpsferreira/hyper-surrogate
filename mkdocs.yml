@@ -5,12 +5,14 @@ site_description: Hyperelastic Surrogates
 site_author: Joao Ferreira
 edit_uri: edit/main/docs/
 repo_name: jpsferreira/hyper-surrogate
-copyright: Maintained by <a href="https://jpsferreira.com">Florian</a>.
+copyright: Maintained by <a href="https://github.com/jpsferreira">Joao Ferreira</a>.
 
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Modules: modules.md
+  - Examples: examples.md
+  - API Reference: modules.md
+  - About: about.md
 plugins:
   - search
   - mkdocstrings:
