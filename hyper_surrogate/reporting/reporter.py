@@ -64,12 +64,12 @@ class Reporter:
             raise ValueError(msg)
 
         self.tensor_type = tensor_type.upper()
+        self.F: np.ndarray | None = None
         if self.tensor_type == "F":
             self.F = tensor
             self.C = Kinematics.right_cauchy_green(tensor)
         elif self.tensor_type == "C":
             self.C = tensor
-            self.F = None
         else:
             msg = f"tensor_type must be 'C' or 'F', got {tensor_type!r}"
             raise ValueError(msg)
