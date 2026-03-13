@@ -30,6 +30,7 @@ def test_initialize_with_valid_material(umat_handler, material):
     assert isinstance(umat_handler.material, Material)
 
 
+@pytest.mark.slow
 def test_generate_umat_code(tmp_path):
     """Test generating the UMAT code to a file."""
     material_model = NeoHooke({"C10": 0.5, "KBULK": 1000.0})
@@ -50,6 +51,7 @@ def test_common_subexpressions_with_empty_tensor(umat_handler):
     assert umat_handler.common_subexpressions(empty_tensor, "var") == []
 
 
+@pytest.mark.slow
 def test_cauchy_no_deformation(material):
     """Test Cauchy stress for no deformation."""
     # Setup

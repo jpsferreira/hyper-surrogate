@@ -37,7 +37,7 @@ class FortranEmitter:
         lines = []
         template = self.ACTIVATIONS[activation]
         lines.append(f"  DO i = 1, {size}")
-        lines.append(f"    {var}(i) = {template.format(x=f'{var}(i)')}")
+        lines.append(f"    {var}(i) = {template.format(x=f"{var}(i)")}")
         lines.append("  END DO")
         return lines
 

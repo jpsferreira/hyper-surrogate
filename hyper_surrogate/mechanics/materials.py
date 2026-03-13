@@ -115,7 +115,7 @@ class Material:
         smat = self._handler.spatial_tangent(self.pk2_expr, f)
         if use_jaumann_rate:
             sigma = self._handler.cauchy(self.sef, f)
-            smat = smat + self._handler.jaumann_correction(sigma)  # type: ignore[call-arg]
+            smat = smat + self._handler.jaumann_correction(sigma)
         return SymbolicHandler.to_voigt_4(smat)
 
 
