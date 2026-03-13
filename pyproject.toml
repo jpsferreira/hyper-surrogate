@@ -61,9 +61,6 @@ module = [
 ]
 warn_unused_ignores = false
 
-[tool.deptry]
-extend_exclude = ["docs", "notebooks"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
