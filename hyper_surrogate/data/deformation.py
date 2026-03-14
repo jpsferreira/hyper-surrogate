@@ -53,6 +53,50 @@ class DeformationGenerator:
     def _rotate(F: np.ndarray, R: np.ndarray) -> np.ndarray:
         return np.einsum("nij,njk,nlk->nil", R, F, R)  # type: ignore[no-any-return]
 
+    def fiber_directions(
+        self,
+        n: int,
+        preferred: np.ndarray | None = None,
+        dispersion: float = 0.0,
+    ) -> np.ndarray:
+        """Generate fiber direction vectors.
+
+        Args:
+            n: Number of samples.
+            preferred: Preferred fiber direction (3,). Default: [1, 0, 0].
+            dispersion: Cone half-angle in radians. 0 = all aligned.
+
+        Returns:
+            Fiber directions (N, 3), unit vectors.
+        """
+        if preferred is None:
+            preferred = np.array([1.0, 0.0, 0.0])
+        preferred = preferred / np.linalg.norm(preferred)
+
+        if dispersion <= 0.0:
+            return np.tile(preferred, (n, 1))
+
+        # Sample directions in a cone around preferred
+        # Build local frame: preferred = e3, find orthogonal e1, e2
+        if abs(preferred[2]) < 0.9:
+            t = np.cross(preferred, np.array([0.0, 0.0, 1.0]))
+        else:
+            t = np.cross(preferred, np.array([1.0, 0.0, 0.0]))
+        e1 = t / np.linalg.norm(t)
+        e2 = np.cross(preferred, e1)
+
+        phi = self._rng.uniform(0, 2 * np.pi, size=n)
+        theta = self._rng.uniform(0, dispersion, size=n)
+
+        x = np.sin(theta) * np.cos(phi)
+        y = np.sin(theta) * np.sin(phi)
+        z = np.cos(theta)
+
+        dirs = x[:, None] * e1 + y[:, None] * e2 + z[:, None] * preferred
+        norms = np.linalg.norm(dirs, axis=1, keepdims=True)
+        result: np.ndarray = dirs / norms
+        return result
+
     def combined(
         self,
         n: int,

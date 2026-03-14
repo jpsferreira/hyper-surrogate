@@ -162,6 +162,43 @@ emitter.write("hybrid_umat.f90")
 
 The generated `hybrid_umat.f90` contains a complete Fortran module with the NN forward/backward pass and a standard UMAT subroutine ready for Abaqus.
 
+The generated `hybrid_umat.f90` contains a complete Fortran module with the NN forward/backward pass and a standard UMAT subroutine ready for Abaqus.
+
+## Anisotropic model: Holzapfel-Ogden with fiber invariants
+
+For transversely isotropic materials, the NN takes 5 invariants: `W(I1_bar, I2_bar, J, I4, I5)` where I4 and I5 are fiber invariants.
+
+```python
+import numpy as np
+import hyper_surrogate as hs
+from hyper_surrogate.mechanics.kinematics import Kinematics
+
+# Define anisotropic material with fiber direction
+fiber_dir = np.array([1.0, 0.0, 0.0])
+material = hs.HolzapfelOgden(
+    parameters={"a": 0.059, "b": 8.023, "af": 18.472, "bf": 16.026, "KBULK": 1000.0},
+    fiber_direction=fiber_dir,
+)
+
+# Generate data and compute 5 invariants
+gen = hs.DeformationGenerator(seed=42)
+F = gen.combined(10000, stretch_range=(0.8, 1.3))
+C = Kinematics.right_cauchy_green(F)
+
+i4 = Kinematics.fiber_invariant4(C, fiber_dir)  # (N,)
+i5 = Kinematics.fiber_invariant5(C, fiber_dir)  # (N,)
+
+# Energy gradients: (N, 5) for anisotropic
+dW_dI = material.evaluate_energy_grad_invariants(C)
+
+# Train and export (same pipeline, input_dim=5)
+# The HybridUMATEmitter auto-detects in_dim=5 and generates
+# fiber invariant computation + dI4/dC, dI5/dC derivatives.
+# Fiber direction is passed via props(1:3) in the Abaqus input file.
+```
+
+See `examples/train_holzapfel_ogden.py` for the complete runnable script.
+
 See also the runnable scripts in the [`examples/`](https://github.com/jpsferreira/hyper-surrogate/tree/main/examples) directory.
 
 ## Kinematics utilities
