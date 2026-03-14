@@ -29,7 +29,7 @@ Anything tagged with "enhancement" and "help wanted" is open to whoever wants to
 
 ## Write Documentation
 
-Cookiecutter PyPackage could always use more documentation, whether as part of the official docs, in docstrings, or even on the web in blog posts, articles, and such.
+hyper-surrogate could always use more documentation, whether as part of the official docs, in docstrings, or even on the web in blog posts, articles, and such.
 
 ## Submit Feedback
 
@@ -45,7 +45,7 @@ If you are proposing a new feature:
 # Get Started!
 
 Ready to contribute? Here's how to set up `hyper-surrogate` for local development.
-Please note this documentation assumes you already have `poetry` and `Git` installed and ready to go.
+Please note this documentation assumes you already have [uv](https://docs.astral.sh/uv/) and `Git` installed and ready to go.
 
 1. Fork the `hyper-surrogate` repo on GitHub.
 
@@ -68,17 +68,16 @@ If you are using `pyenv`, select a version to use locally. (See installed versio
 pyenv local <x.y.z>
 ```
 
-Then, install and activate the environment with:
+Then, install the environment with all development dependencies:
 
 ```bash
-poetry install
-poetry shell
+uv sync --all-groups --extra ml
 ```
 
 4. Install pre-commit to run linters/formatters at commit time:
 
 ```bash
-poetry run pre-commit install
+uv run pre-commit install
 ```
 
 5. Create a branch for local development:
@@ -86,6 +85,8 @@ poetry run pre-commit install
 ```bash
 git checkout -b name-of-your-bugfix-or-feature
 ```
+
+Branch prefixes: `feat/` for features, `fix/` for bug fixes, `chore/` for maintenance.
 
 Now you can make your changes locally.
 
@@ -103,17 +104,26 @@ Now, validate that all unit tests are passing:
 make test
 ```
 
-9. Before raising a pull request you should also run tox.
-   This will run the tests across different versions of Python:
+To run only fast tests (skipping slow ones):
 
 ```bash
-tox
+uv run pytest -m "not slow"
 ```
 
-This requires you to have multiple versions of python installed.
-This step is also triggered in the CI/CD pipeline, so you could also choose to skip this step locally.
+To run slow tests explicitly:
 
-10. Commit your changes and push your branch to GitHub:
+```bash
+uv run pytest -m slow
+```
+
+8. Build and verify the documentation:
+
+```bash
+make docs-test   # check docs build without errors
+make docs         # serve docs locally at http://127.0.0.1:8000
+```
+
+9. Commit your changes and push your branch to GitHub:
 
 ```bash
 git add .
@@ -121,7 +131,16 @@ git commit -m "Your detailed description of your changes."
 git push origin name-of-your-bugfix-or-feature
 ```
 
-11. Submit a pull request through the GitHub website.
+10. Submit a pull request through the GitHub website.
+
+# Code Style
+
+- **Formatter/linter:** [ruff](https://docs.astral.sh/ruff/) with 120-character line length
+- **Type checking:** [mypy](https://mypy-lang.org/) in strict mode on `hyper_surrogate/`
+- **Imports:** Use `from __future__ import annotations` in all modules
+- **Testing:** [pytest](https://pytest.org/) with `@pytest.mark.slow` for expensive tests
+
+All checks run via `make check` (ruff, mypy, deptry) and `make test` (pytest with coverage).
 
 # Pull Request Guidelines
 
