@@ -64,7 +64,8 @@ result = hs.Trainer(
     lr=1e-3,
 ).fit()
 
-print(f"Best validation loss: {result.best_val_loss:.6f} (epoch {result.best_epoch})")
+best_val = result.history["val_loss"][result.best_epoch]
+print(f"Best validation loss: {best_val:.6f} (epoch {result.best_epoch})")
 
 # 3. Export weights and generate Fortran
 exported = hs.extract_weights(result.model, in_norm, out_norm)
@@ -105,6 +106,63 @@ result = hs.Trainer(
 exported = hs.extract_weights(result.model, in_norm, out_norm)
 exported.save("icnn_surrogate.npz")
 ```
+
+## Export a hybrid UMAT (NN energy + analytical mechanics)
+
+The `HybridUMATEmitter` generates a complete Abaqus UMAT subroutine where the neural network provides the strain energy function `W(I1_bar, I2_bar, J)` and everything else — kinematics, PK2 stress, Cauchy push-forward, and spatial tangent with Jaumann correction — is computed analytically in Fortran.
+
+```python
+import numpy as np
+import hyper_surrogate as hs
+from hyper_surrogate.data.dataset import MaterialDataset, Normalizer
+from hyper_surrogate.data.deformation import DeformationGenerator
+from hyper_surrogate.mechanics.kinematics import Kinematics
+
+# Generate training data with volumetric perturbation
+material = hs.NeoHooke({"C10": 0.5, "KBULK": 1000.0})
+gen = DeformationGenerator(seed=42)
+F = gen.combined(10000, stretch_range=(0.8, 1.3), shear_range=(-0.2, 0.2))
+rng = np.random.default_rng(99)
+J_target = rng.uniform(0.95, 1.05, size=10000)
+F = F * (J_target / np.linalg.det(F))[:, None, None] ** (1.0 / 3.0)
+C = Kinematics.right_cauchy_green(F)
+
+# Prepare invariant inputs and energy targets
+i1 = Kinematics.isochoric_invariant1(C)
+i2 = Kinematics.isochoric_invariant2(C)
+j = np.sqrt(Kinematics.det_invariant(C))
+inputs = np.column_stack([i1, i2, j])
+energy = material.evaluate_energy(C)
+dW_dI = material.evaluate_energy_grad_invariants(C)
+
+in_norm = Normalizer().fit(inputs)
+X = in_norm.transform(inputs).astype(np.float32)
+W = energy.reshape(-1, 1).astype(np.float32)
+S = (dW_dI * in_norm.params["std"]).astype(np.float32)
+
+n_val = int(10000 * 0.15)
+idx = np.random.default_rng(42).permutation(10000)
+train_ds = MaterialDataset(X[idx[n_val:]], (W[idx[n_val:]], S[idx[n_val:]]))
+val_ds = MaterialDataset(X[idx[:n_val]], (W[idx[:n_val]], S[idx[:n_val]]))
+
+# Train energy MLP
+model = hs.MLP(input_dim=3, output_dim=1, hidden_dims=[64, 64, 64], activation="softplus")
+result = hs.Trainer(
+    model, train_ds, val_ds,
+    loss_fn=hs.EnergyStressLoss(alpha=1.0, beta=1.0),
+    max_epochs=2000, lr=1e-3, patience=200, batch_size=512,
+).fit()
+
+# Export hybrid UMAT
+energy_norm = Normalizer().fit(energy.reshape(-1, 1))
+exported = hs.extract_weights(result.model, in_norm, energy_norm)
+emitter = hs.HybridUMATEmitter(exported)
+emitter.write("hybrid_umat.f90")
+```
+
+The generated `hybrid_umat.f90` contains a complete Fortran module with the NN forward/backward pass and a standard UMAT subroutine ready for Abaqus.
+
+See also the runnable scripts in the [`examples/`](https://github.com/jpsferreira/hyper-surrogate/tree/main/examples) directory.
 
 ## Kinematics utilities
 
