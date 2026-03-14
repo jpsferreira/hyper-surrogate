@@ -66,14 +66,26 @@ def extract_weights(
     if not isinstance(model, SurrogateModel):
         msg = f"Expected SurrogateModel, got {type(model)}"
         raise TypeError(msg)
+    metadata: dict[str, Any] = {
+        "architecture": model.__class__.__name__.lower(),
+        "input_dim": model.input_dim,
+        "output_dim": model.output_dim,
+    }
+
+    branches = model.branch_sequence()
+    if branches is not None:
+        metadata["branches"] = [
+            {"name": b.name, "input_indices": b.input_indices, "layers": _layers_to_dicts(b.layers)} for b in branches
+        ]
+
     return ExportedModel(
         layers=model.layer_sequence(),
         weights=model.export_weights(),
         input_normalizer=input_normalizer.params if input_normalizer else None,
         output_normalizer=output_normalizer.params if output_normalizer else None,
-        metadata={
-            "architecture": model.__class__.__name__.lower(),
-            "input_dim": model.input_dim,
-            "output_dim": model.output_dim,
-        },
+        metadata=metadata,
     )
+
+
+def _layers_to_dicts(layers: list[Any]) -> list[dict[str, str]]:
+    return [{"weights": ly.weights, "bias": ly.bias, "activation": ly.activation} for ly in layers]

@@ -18,10 +18,10 @@ def _make_scalar_model(activation="softplus", hidden_dims=None, input_dim=3):
     return extract_weights(model, in_norm, energy_norm)
 
 
-def test_rejects_non_mlp():
+def test_rejects_unsupported_architecture():
     exported = _make_scalar_model()
     exported.metadata["architecture"] = "icnn"
-    with pytest.raises(ValueError, match="only supports MLP"):
+    with pytest.raises(ValueError, match="supports"):
         HybridUMATEmitter(exported)
 
 

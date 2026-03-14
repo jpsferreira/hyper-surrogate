@@ -162,8 +162,6 @@ emitter.write("hybrid_umat.f90")
 
 The generated `hybrid_umat.f90` contains a complete Fortran module with the NN forward/backward pass and a standard UMAT subroutine ready for Abaqus.
 
-The generated `hybrid_umat.f90` contains a complete Fortran module with the NN forward/backward pass and a standard UMAT subroutine ready for Abaqus.
-
 ## Anisotropic model: Holzapfel-Ogden with fiber invariants
 
 For transversely isotropic materials, the NN takes 5 invariants: `W(I1_bar, I2_bar, J, I4, I5)` where I4 and I5 are fiber invariants.
@@ -198,6 +196,39 @@ dW_dI = material.evaluate_energy_grad_invariants(C)
 ```
 
 See `examples/train_holzapfel_ogden.py` for the complete runnable script.
+
+## Polyconvex energy with PolyconvexICNN
+
+`PolyconvexICNN` guarantees convexity per invariant group by using independent ICNN branches. The total energy is the sum of branch outputs — convex superposition preserves convexity.
+
+```python
+import hyper_surrogate as hs
+
+# Each invariant gets its own convex branch
+model = hs.PolyconvexICNN(
+    groups=[[0], [1], [2]],      # W = W1(I1) + W2(I2) + W3(J)
+    hidden_dims=[32, 32],
+    activation="softplus",
+)
+
+# For anisotropic materials, group fiber invariants:
+# groups=[[0], [1], [2], [3, 4]]  ->  W = W1(I1) + W2(I2) + W3(J) + W4(I4, I5)
+
+# Train with EnergyStressLoss (same as MLP/ICNN)
+result = hs.Trainer(
+    model, train_ds, val_ds,
+    loss_fn=hs.EnergyStressLoss(alpha=1.0, beta=1.0),
+    max_epochs=2000, lr=1e-3,
+).fit()
+
+# Export: both FortranEmitter and HybridUMATEmitter support polyconvex
+exported = hs.extract_weights(result.model, in_norm, energy_norm)
+hs.HybridUMATEmitter(exported).write("hybrid_umat_polyconvex.f90")
+```
+
+The Hessian for polyconvex models is block-diagonal (branches are independent), making the tangent computation more efficient.
+
+See `examples/train_polyconvex.py` for the complete runnable script.
 
 See also the runnable scripts in the [`examples/`](https://github.com/jpsferreira/hyper-surrogate/tree/main/examples) directory.
 

@@ -24,9 +24,12 @@ from hyper_surrogate.export.weights import ExportedModel
 class HybridUMATEmitter:
     """Emit a complete Abaqus UMAT subroutine with NN-based strain energy."""
 
+    SUPPORTED_ARCHITECTURES = ("mlp", "polyconvexicnn")
+
     def __init__(self, exported: ExportedModel) -> None:
-        if exported.metadata.get("architecture") != "mlp":
-            msg = "HybridUMATEmitter only supports MLP architecture"
+        arch = exported.metadata.get("architecture")
+        if arch not in self.SUPPORTED_ARCHITECTURES:
+            msg = f"HybridUMATEmitter supports {self.SUPPORTED_ARCHITECTURES}, got '{arch}'"
             raise ValueError(msg)
         if exported.metadata.get("output_dim") != 1:
             msg = "HybridUMATEmitter requires a scalar (output_dim=1) energy model"
@@ -60,6 +63,13 @@ class HybridUMATEmitter:
 
     def _emit_nn_parameters(self) -> str:
         """Emit weight/bias arrays and normalizer constants."""
+        arch = self.exported.metadata.get("architecture")
+        if arch == "polyconvexicnn":
+            return self._emit_poly_nn_parameters()
+        return self._emit_mlp_nn_parameters()
+
+    def _emit_mlp_nn_parameters(self) -> str:
+        """Emit MLP weight/bias arrays."""
         lines: list[str] = []
         layers = self.exported.layers
         weights = self.exported.weights
@@ -76,8 +86,48 @@ class HybridUMATEmitter:
 
         return "\n".join(lines)
 
+    def _emit_poly_nn_parameters(self) -> str:
+        """Emit per-branch ICNN weight/bias arrays."""
+        lines: list[str] = []
+        weights = self.exported.weights
+        branches = self.exported.metadata["branches"]
+
+        for bi, branch in enumerate(branches):
+            branch_layers = branch["layers"]
+            for li, layer in enumerate(branch_layers):
+                w = weights[layer["weights"]]
+                b = weights[layer["bias"]]
+                # Pre-apply softplus to wz weights (non-negative constraint)
+                if "wz" in layer["weights"]:
+                    w = np.log(1.0 + np.exp(w))
+                lines.append(self._fmt_2d(w, f"w_b{bi}_{li}"))
+                lines.append(self._fmt_1d(b, f"b_b{bi}_{li}"))
+
+            # wx skip-connection weights (layers 1..L-1 have wx_layers)
+            prefix = f"branches.{bi}."
+            wx_keys = sorted([
+                k
+                for k in weights
+                if k.startswith(prefix + "wx_layers") and "weight" in k and k != branch_layers[0]["weights"]
+            ])
+            for wi, wk in enumerate(wx_keys):
+                lines.append(self._fmt_2d(weights[wk], f"wx_b{bi}_{wi + 1}"))
+            # wx_final skip
+            wx_final_key = prefix + "wx_final.weight"
+            if wx_final_key in weights:
+                lines.append(self._fmt_2d(weights[wx_final_key], f"wxf_b{bi}"))
+
+        if self.exported.input_normalizer:
+            lines.append(self._fmt_1d(self.exported.input_normalizer["mean"], "in_mean"))
+            lines.append(self._fmt_1d(self.exported.input_normalizer["std"], "in_std"))
+
+        return "\n".join(lines)
+
     def _emit_nn_forward_and_backward(self) -> str:  # noqa: C901
         """Emit NN forward pass + analytical backward pass for dW/dI and d²W/dI²."""
+        arch = self.exported.metadata.get("architecture")
+        if arch == "polyconvexicnn":
+            return self._emit_poly_nn_forward_and_backward()
         layers = self.exported.layers
         weights = self.exported.weights
         n_layers = len(layers)
@@ -349,6 +399,210 @@ class HybridUMATEmitter:
       END DO
     END DO
 """
+
+    def _emit_poly_nn_forward_and_backward(self) -> str:  # noqa: C901
+        """Emit polyconvex ICNN forward/backward with per-branch Hessian."""
+        weights = self.exported.weights
+        branches = self.exported.metadata["branches"]
+        in_dim = self.exported.metadata["input_dim"]
+
+        lines: list[str] = []
+
+        # Local variables
+        lines.append(f"DOUBLE PRECISION :: x_norm({in_dim})")
+        for bi, branch in enumerate(branches):
+            b_layers = branch["layers"]
+            b_in = len(branch["input_indices"])
+            n_hidden = len(b_layers) - 1
+            lines.append(f"DOUBLE PRECISION :: xb{bi}({b_in})")
+            for li in range(n_hidden):
+                hd = weights[b_layers[li]["weights"]].shape[0]
+                lines.append(f"DOUBLE PRECISION :: z_b{bi}_{li}({hd})")
+                lines.append(f"DOUBLE PRECISION :: a_b{bi}_{li}({hd})")
+                lines.append(f"DOUBLE PRECISION :: dact_b{bi}_{li}({hd})")
+                lines.append(f"DOUBLE PRECISION :: d2act_b{bi}_{li}({hd})")
+                lines.append(f"DOUBLE PRECISION :: delta_b{bi}_{li}({hd})")
+                lines.append(f"DOUBLE PRECISION :: P_b{bi}_{li}({hd},{b_in})")
+                lines.append(f"DOUBLE PRECISION :: J_b{bi}_{li}({hd},{b_in})")
+            lines.append(f"DOUBLE PRECISION :: grad_b{bi}({b_in})")
+            lines.append(f"DOUBLE PRECISION :: d2W_b{bi}({b_in},{b_in})")
+        lines.append("DOUBLE PRECISION :: coeff, branch_W")
+        lines.append("")
+
+        # Normalize input
+        lines.append("! Normalize invariants")
+        lines.append("x_norm = (nn_input - in_mean) / in_std")
+        lines.append("")
+
+        # Initialize outputs
+        lines.append("W_nn = 0.0d0")
+        lines.append("dW_dI = 0.0d0")
+        lines.append("d2W_dI2 = 0.0d0")
+        lines.append("")
+
+        # Per-branch forward + backward + Hessian
+        for bi, branch in enumerate(branches):
+            b_layers = branch["layers"]
+            indices = branch["input_indices"]
+            b_in = len(indices)
+            n_hidden = len(b_layers) - 1
+
+            lines.append(f"! ---- Branch {bi}: inputs [{", ".join(str(i + 1) for i in indices)}] ----")
+
+            # Slice input
+            for si, idx in enumerate(indices):
+                lines.append(f"xb{bi}({si + 1}) = x_norm({idx + 1})")
+            lines.append("")
+
+            # Forward pass
+            lines.append(f"! Forward pass branch {bi}")
+            # Layer 0: x-path only
+            lines.append(f"a_b{bi}_0 = MATMUL(w_b{bi}_0, xb{bi}) + b_b{bi}_0")
+            act0 = b_layers[0]["activation"]
+            hd0 = weights[b_layers[0]["weights"]].shape[0]
+            self._emit_icnn_act(lines, bi, 0, act0, hd0)
+            lines.append("")
+
+            # Hidden layers with wz + wx skip
+            for li in range(1, n_hidden):
+                layer = b_layers[li]
+                hd = weights[layer["weights"]].shape[0]
+                act = layer["activation"]
+                lines.append(
+                    f"a_b{bi}_{li} = MATMUL(w_b{bi}_{li}, z_b{bi}_{li - 1}) + MATMUL(wx_b{bi}_{li}, xb{bi}) + b_b{bi}_{li}"
+                )
+                self._emit_icnn_act(lines, bi, li, act, hd)
+                lines.append("")
+
+            # Output: identity activation
+            last_li = len(b_layers) - 1
+            last_hidden = n_hidden - 1
+            lines.append(
+                f"branch_W = DOT_PRODUCT(w_b{bi}_{last_li}(1,:), z_b{bi}_{last_hidden}) + DOT_PRODUCT(wxf_b{bi}(1,:), xb{bi}) + b_b{bi}_{last_li}(1)"
+            )
+            lines.append("W_nn = W_nn + branch_W")
+            lines.append("")
+
+            # Backward pass
+            lines.append(f"! Backward pass branch {bi}")
+            # delta for last hidden layer
+            hd_last = weights[b_layers[last_hidden]["weights"]].shape[0]
+            lines.append(f"DO ii = 1, {hd_last}")
+            lines.append(f"  delta_b{bi}_{last_hidden}(ii) = w_b{bi}_{last_li}(1, ii) * dact_b{bi}_{last_hidden}(ii)")
+            lines.append("END DO")
+
+            # Backprop through hidden layers
+            for li in range(last_hidden - 1, -1, -1):
+                hd = weights[b_layers[li]["weights"]].shape[0]
+                hd_next = weights[b_layers[li + 1]["weights"]].shape[0]
+                lines.append(f"DO ii = 1, {hd}")
+                lines.append(f"  delta_b{bi}_{li}(ii) = 0.0d0")
+                lines.append(f"  DO jj = 1, {hd_next}")
+                lines.append(
+                    f"    delta_b{bi}_{li}(ii) = delta_b{bi}_{li}(ii) + w_b{bi}_{li + 1}(jj, ii) * delta_b{bi}_{li + 1}(jj)"
+                )
+                lines.append("  END DO")
+                lines.append(f"  delta_b{bi}_{li}(ii) = delta_b{bi}_{li}(ii) * dact_b{bi}_{li}(ii)")
+                lines.append("END DO")
+
+            # grad_b = W0^T * delta_0 + wx_final^T
+            lines.append(f"DO ii = 1, {b_in}")
+            lines.append(f"  grad_b{bi}(ii) = wxf_b{bi}(1, ii)")
+            lines.append(f"  DO jj = 1, {hd0}")
+            lines.append(f"    grad_b{bi}(ii) = grad_b{bi}(ii) + w_b{bi}_0(jj, ii) * delta_b{bi}_0(jj)")
+            lines.append("  END DO")
+            lines.append("END DO")
+            lines.append("")
+
+            # Scatter gradient
+            for si, idx in enumerate(indices):
+                lines.append(f"dW_dI({idx + 1}) = dW_dI({idx + 1}) + grad_b{bi}({si + 1}) / in_std({idx + 1})")
+            lines.append("")
+
+            # Jacobian propagation for Hessian
+            lines.append(f"! Jacobian propagation branch {bi}")
+            # P0 = W0, J0 = diag(dact0) * W0
+            lines.append(f"DO ii = 1, {hd0}")
+            lines.append(f"  DO jj = 1, {b_in}")
+            lines.append(f"    P_b{bi}_0(ii, jj) = w_b{bi}_0(ii, jj)")
+            lines.append(f"    J_b{bi}_0(ii, jj) = dact_b{bi}_0(ii) * w_b{bi}_0(ii, jj)")
+            lines.append("  END DO")
+            lines.append("END DO")
+
+            for li in range(1, n_hidden):
+                hd = weights[b_layers[li]["weights"]].shape[0]
+                hd_prev = weights[b_layers[li - 1]["weights"]].shape[0]
+                # P_i = Wz_i * J_{i-1} + Wx_i  (ICNN skip connection)
+                lines.append(f"DO ii = 1, {hd}")
+                lines.append(f"  DO jj = 1, {b_in}")
+                lines.append(f"    P_b{bi}_{li}(ii, jj) = wx_b{bi}_{li}(ii, jj)")
+                lines.append(f"    DO kk = 1, {hd_prev}")
+                lines.append(
+                    f"      P_b{bi}_{li}(ii, jj) = P_b{bi}_{li}(ii, jj) + w_b{bi}_{li}(ii, kk) * J_b{bi}_{li - 1}(kk, jj)"
+                )
+                lines.append("    END DO")
+                lines.append(f"    J_b{bi}_{li}(ii, jj) = dact_b{bi}_{li}(ii) * P_b{bi}_{li}(ii, jj)")
+                lines.append("  END DO")
+                lines.append("END DO")
+            lines.append("")
+
+            # Hessian: d2W_b = sum_i P_i^T diag(beta_i * d2act_i) P_i
+            lines.append(f"! Hessian branch {bi}")
+            lines.append(f"d2W_b{bi} = 0.0d0")
+            for li in range(n_hidden):
+                act = b_layers[li]["activation"]
+                if act in ("relu", "identity"):
+                    lines.append(f"! Layer {li} ({act}): d2act=0, skip")
+                    continue
+                hd = weights[b_layers[li]["weights"]].shape[0]
+                lines.append(f"DO ii = 1, {hd}")
+                lines.append(f"  coeff = delta_b{bi}_{li}(ii) / dact_b{bi}_{li}(ii) * d2act_b{bi}_{li}(ii)")
+                lines.append(f"  DO jj = 1, {b_in}")
+                lines.append(f"    DO kk = 1, {b_in}")
+                lines.append(
+                    f"      d2W_b{bi}(jj, kk) = d2W_b{bi}(jj, kk) + coeff * P_b{bi}_{li}(ii, jj) * P_b{bi}_{li}(ii, kk)"
+                )
+                lines.append("    END DO")
+                lines.append("  END DO")
+                lines.append("END DO")
+            lines.append("")
+
+            # Scatter Hessian (block-diagonal)
+            for si, idx_i in enumerate(indices):
+                for sj, idx_j in enumerate(indices):
+                    lines.append(
+                        f"d2W_dI2({idx_i + 1},{idx_j + 1}) = d2W_dI2({idx_i + 1},{idx_j + 1})"
+                        f" + d2W_b{bi}({si + 1},{sj + 1}) / (in_std({idx_i + 1}) * in_std({idx_j + 1}))"
+                    )
+            lines.append("")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _emit_icnn_act(lines: list[str], bi: int, li: int, act: str, hd: int) -> None:
+        """Emit activation + dact + d2act for ICNN branch layer."""
+        if act == "identity":
+            lines.append(f"z_b{bi}_{li} = a_b{bi}_{li}")
+            lines.append(f"dact_b{bi}_{li} = 1.0d0")
+            lines.append(f"d2act_b{bi}_{li} = 0.0d0")
+        elif act == "softplus":
+            lines.append(f"z_b{bi}_{li} = log(1.0d0 + exp(a_b{bi}_{li}))")
+            lines.append(f"dact_b{bi}_{li} = 1.0d0 / (1.0d0 + exp(-a_b{bi}_{li}))")
+            lines.append(f"d2act_b{bi}_{li} = dact_b{bi}_{li} * (1.0d0 - dact_b{bi}_{li})")
+        elif act == "tanh":
+            lines.append(f"z_b{bi}_{li} = tanh(a_b{bi}_{li})")
+            lines.append(f"dact_b{bi}_{li} = 1.0d0 - z_b{bi}_{li}**2")
+            lines.append(f"d2act_b{bi}_{li} = -2.0d0 * z_b{bi}_{li} * dact_b{bi}_{li}")
+        elif act == "relu":
+            lines.append(f"DO ii = 1, {hd}")
+            lines.append(f"  z_b{bi}_{li}(ii) = max(0.0d0, a_b{bi}_{li}(ii))")
+            lines.append(f"  IF (a_b{bi}_{li}(ii) > 0.0d0) THEN")
+            lines.append(f"    dact_b{bi}_{li}(ii) = 1.0d0")
+            lines.append("  ELSE")
+            lines.append(f"    dact_b{bi}_{li}(ii) = 0.0d0")
+            lines.append("  END IF")
+            lines.append(f"  d2act_b{bi}_{li}(ii) = 0.0d0")
+            lines.append("END DO")
 
     def emit(self) -> str:
         """Generate the complete hybrid UMAT Fortran code."""

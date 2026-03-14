@@ -11,6 +11,7 @@ from hyper_surrogate.reporting.reporter import Reporter
 try:
     from hyper_surrogate.models.icnn import ICNN  # noqa: F401
     from hyper_surrogate.models.mlp import MLP  # noqa: F401
+    from hyper_surrogate.models.polyconvex import PolyconvexICNN  # noqa: F401
     from hyper_surrogate.training.losses import EnergyStressLoss, StressLoss, StressTangentLoss  # noqa: F401
     from hyper_surrogate.training.trainer import Trainer, TrainingResult  # noqa: F401
 except ImportError:
