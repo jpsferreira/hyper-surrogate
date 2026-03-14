@@ -68,12 +68,14 @@ def test_emit_activations():
         assert "SUBROUTINE nn_eval" in code
 
 
-def test_emit_finite_differences():
+def test_emit_analytical_hessian():
     exported = _make_scalar_model()
     code = HybridUMATEmitter(exported).emit()
-    # Check for d²W/dI² via FD
-    assert "eps_fd" in code
+    # Check for analytical Hessian (no FD)
+    assert "eps_fd" not in code
     assert "d2W_dI2" in code
+    assert "d2act" in code
+    assert "d2W_dx2" in code
 
 
 def test_write_to_file(tmp_path):

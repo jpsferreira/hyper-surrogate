@@ -86,24 +86,23 @@ class HybridUMATEmitter:
         for i in range(n_layers):
             lines.append(f"DOUBLE PRECISION :: z{i}({hidden_dims[i]})")
             lines.append(f"DOUBLE PRECISION :: a{i}({hidden_dims[i]})")  # pre-activation
+            lines.append(f"DOUBLE PRECISION :: dact{i}({hidden_dims[i]})")  # activation derivative
+            lines.append(f"DOUBLE PRECISION :: d2act{i}({hidden_dims[i]})")  # second derivative
         lines.append(f"DOUBLE PRECISION :: x_norm({in_dim})")
         lines.append("")
 
         # Local variables for backward pass
-        for i in range(n_layers):
-            lines.append(f"DOUBLE PRECISION :: dact{i}({hidden_dims[i]})")  # activation derivative
-        # delta vectors for backprop
         for i in range(n_layers - 1, -1, -1):
             lines.append(f"DOUBLE PRECISION :: delta{i}({hidden_dims[i]})")
         lines.append(f"DOUBLE PRECISION :: grad_x({in_dim})")
         lines.append("")
 
-        # For second derivatives (Gauss-Newton approximation: J^T J through layers)
-        # We propagate a (hidden_dim x in_dim) Jacobian through the network
+        # For Jacobian propagation and Hessian
         for i in range(n_layers):
+            lines.append(f"DOUBLE PRECISION :: P{i}({hidden_dims[i]},{in_dim})")
             lines.append(f"DOUBLE PRECISION :: J{i}({hidden_dims[i]},{in_dim})")
-        lines.append(f"DOUBLE PRECISION :: dW_dx({in_dim})")
         lines.append(f"DOUBLE PRECISION :: d2W_dx2({in_dim},{in_dim})")
+        lines.append("DOUBLE PRECISION :: coeff")
         lines.append("")
 
         # --- Normalize input ---
@@ -111,7 +110,7 @@ class HybridUMATEmitter:
         lines.append("x_norm = (nn_input - in_mean) / in_std")
         lines.append("")
 
-        # --- Forward pass ---
+        # --- Forward pass with d2act ---
         lines.append("! Forward pass")
         for i, layer in enumerate(layers):
             input_var = "x_norm" if i == 0 else f"z{i - 1}"
@@ -120,12 +119,15 @@ class HybridUMATEmitter:
             if act == "identity":
                 lines.append(f"z{i} = a{i}")
                 lines.append(f"dact{i} = 1.0d0")
+                lines.append(f"d2act{i} = 0.0d0")
             elif act == "tanh":
                 lines.append(f"z{i} = tanh(a{i})")
                 lines.append(f"dact{i} = 1.0d0 - z{i}**2")
+                lines.append(f"d2act{i} = -2.0d0 * z{i} * dact{i}")
             elif act == "softplus":
                 lines.append(f"z{i} = log(1.0d0 + exp(a{i}))")
                 lines.append(f"dact{i} = 1.0d0 / (1.0d0 + exp(-a{i}))")
+                lines.append(f"d2act{i} = dact{i} * (1.0d0 - dact{i})")
             elif act == "relu":
                 lines.append(f"DO ii = 1, {hidden_dims[i]}")
                 lines.append(f"  z{i}(ii) = max(0.0d0, a{i}(ii))")
@@ -134,10 +136,12 @@ class HybridUMATEmitter:
                 lines.append("  ELSE")
                 lines.append(f"    dact{i}(ii) = 0.0d0")
                 lines.append("  END IF")
+                lines.append(f"  d2act{i}(ii) = 0.0d0")
                 lines.append("END DO")
             elif act == "sigmoid":
                 lines.append(f"z{i} = 1.0d0 / (1.0d0 + exp(-a{i}))")
                 lines.append(f"dact{i} = z{i} * (1.0d0 - z{i})")
+                lines.append(f"d2act{i} = dact{i} * (1.0d0 - 2.0d0 * z{i})")
             lines.append("")
 
         # W = z_{last}(1) (scalar output)
@@ -169,49 +173,64 @@ class HybridUMATEmitter:
         lines.append("")
 
         # dW/dI = dW/dx_norm / std (chain rule for normalization)
-        lines.append("! Convert to raw invariant space: dW/dI = dW/dx_norm / std")
-        lines.append("dW_dI(1) = grad_x(1) / in_std(1)")
-        lines.append("dW_dI(2) = grad_x(2) / in_std(2)")
-        lines.append("dW_dI(3) = grad_x(3) / in_std(3)")
+        lines.append("! Convert gradient to raw invariant space: dW/dI = dW/dx_norm / std")
+        for k in range(in_dim):
+            lines.append(f"dW_dI({k + 1}) = grad_x({k + 1}) / in_std({k + 1})")
         lines.append("")
 
-        # --- Second derivatives: d²W/dI² via Jacobian propagation ---
-        lines.append("! Second derivatives: d²W/dI² via Jacobian forward mode")
-        # J0 = diag(dact0) * W0  (hidden0 x in_dim)
+        # --- Jacobian propagation: P_i = W_i * J_{i-1}, J_i = diag(dact_i) * P_i ---
+        lines.append("! Jacobian propagation (forward mode)")
+        # P0 = W0, J0 = diag(dact0) * W0
         lines.append(f"DO ii = 1, {hidden_dims[0]}")
         lines.append(f"  DO jj = 1, {in_dim}")
+        lines.append("    P0(ii, jj) = w0(ii, jj)")
         lines.append("    J0(ii, jj) = dact0(ii) * w0(ii, jj)")
         lines.append("  END DO")
         lines.append("END DO")
 
         for i in range(1, n_layers):
-            # J_i = diag(dact_i) * W_i * J_{i-1}
+            # P_i = W_i * J_{i-1}  (pre-activation Jacobian)
+            # J_i = diag(dact_i) * P_i
             lines.append(f"DO ii = 1, {hidden_dims[i]}")
             lines.append(f"  DO jj = 1, {in_dim}")
-            lines.append(f"    J{i}(ii, jj) = 0.0d0")
+            lines.append(f"    P{i}(ii, jj) = 0.0d0")
             lines.append(f"    DO kk = 1, {hidden_dims[i - 1]}")
-            lines.append(f"      J{i}(ii, jj) = J{i}(ii, jj) + w{i}(ii, kk) * J{i - 1}(kk, jj)")
+            lines.append(f"      P{i}(ii, jj) = P{i}(ii, jj) + w{i}(ii, kk) * J{i - 1}(kk, jj)")
             lines.append("    END DO")
-            lines.append(f"    J{i}(ii, jj) = dact{i}(ii) * J{i}(ii, jj)")
+            lines.append(f"    J{i}(ii, jj) = dact{i}(ii) * P{i}(ii, jj)")
             lines.append("  END DO")
             lines.append("END DO")
-
-        # d²W/dx_norm² ≈ J_last^T * J_last  (Gauss-Newton approx for scalar output)
-        # But for scalar output with identity last activation, J_last IS the exact Hessian row
-        # Actually for scalar output: dW/dx = J_last(1,:), and we need the full Hessian.
-        # The exact Hessian requires second-order activation terms. For softplus/tanh
-        # the GN approximation J^T J is NOT the Hessian. We need the exact Hessian.
-        #
-        # Exact approach: propagate Hessian through each layer.
-        # For layer i: H_i = diag(dact_i) * W_i * H_{i-1} * W_i^T * diag(dact_i)
-        #            + diag(d2act_i * (W_i * J_{i-1})^2)  [element-wise]
-        # This is complex. For now, use numerical perturbation for d²W/dI².
-
         lines.append("")
-        lines.append("! d²W/dI² via finite differences on dW/dI")
-        lines.append("! (exact analytical Hessian through NN layers is also possible)")
-        lines.append("! We perturb each invariant and recompute dW/dI")
-        lines.append("! This is done in the main UMAT body below")
+
+        # --- Exact analytical Hessian: d²W/dx² = Σ_i P_i^T diag(beta_i * d2act_i) P_i ---
+        # beta_i = delta_i / dact_i = dW/dz_i (sensitivity to post-activation)
+        lines.append("! Exact analytical Hessian: d²W/dx_norm²")
+        lines.append("d2W_dx2 = 0.0d0")
+        for i in range(n_layers):
+            act = layers[i].activation
+            # Skip layers with zero d2act (relu, identity) — they contribute nothing
+            if act in ("relu", "identity"):
+                lines.append(f"! Layer {i} ({act}): d2act=0, no Hessian contribution")
+                continue
+            lines.append(f"! Layer {i} ({act})")
+            lines.append(f"DO ii = 1, {hidden_dims[i]}")
+            # coeff = beta_i(ii) * d2act_i(ii) = (delta_i(ii) / dact_i(ii)) * d2act_i(ii)
+            lines.append(f"  coeff = delta{i}(ii) / dact{i}(ii) * d2act{i}(ii)")
+            lines.append(f"  DO jj = 1, {in_dim}")
+            lines.append(f"    DO kk = 1, {in_dim}")
+            lines.append(f"      d2W_dx2(jj, kk) = d2W_dx2(jj, kk) + coeff * P{i}(ii, jj) * P{i}(ii, kk)")
+            lines.append("    END DO")
+            lines.append("  END DO")
+            lines.append("END DO")
+        lines.append("")
+
+        # Convert to raw invariant space: d2W/dI2(k,l) = d2W/dx2(k,l) / (std(k) * std(l))
+        lines.append("! Convert Hessian to raw invariant space: d2W/dI2(k,l) = d2W/dx2(k,l) / (std(k)*std(l))")
+        lines.append(f"DO ii = 1, {in_dim}")
+        lines.append(f"  DO jj = 1, {in_dim}")
+        lines.append("    d2W_dI2(ii, jj) = d2W_dx2(ii, jj) / (in_std(ii) * in_std(jj))")
+        lines.append("  END DO")
+        lines.append("END DO")
 
         return "\n".join(lines)
 
@@ -222,33 +241,6 @@ class HybridUMATEmitter:
         layers = self.exported.layers
         weights = self.exported.weights
         hidden_dims = [weights[layer.weights].shape[0] for layer in layers]
-
-        # Build the activation code snippets for the perturbation loop
-        def activation_block(layer_idx: int, prefix: str = "") -> str:
-            act = layers[layer_idx].activation
-            var_z = f"{prefix}z{layer_idx}"
-            var_a = f"{prefix}a{layer_idx}"
-            var_dact = f"{prefix}dact{layer_idx}"
-            if act == "identity":
-                return f"{var_z} = {var_a}\n{var_dact} = 1.0d0"
-            elif act == "tanh":
-                return f"{var_z} = tanh({var_a})\n{var_dact} = 1.0d0 - {var_z}**2"
-            elif act == "softplus":
-                return f"{var_z} = log(1.0d0 + exp({var_a}))\n{var_dact} = 1.0d0 / (1.0d0 + exp(-{var_a}))"
-            elif act == "sigmoid":
-                return f"{var_z} = 1.0d0 / (1.0d0 + exp(-{var_a}))\n{var_dact} = {var_z} * (1.0d0 - {var_z})"
-            elif act == "relu":
-                return (
-                    f"DO ii = 1, {hidden_dims[layer_idx]}\n"
-                    f"  {var_z}(ii) = max(0.0d0, {var_a}(ii))\n"
-                    f"  IF ({var_a}(ii) > 0.0d0) THEN\n"
-                    f"    {var_dact}(ii) = 1.0d0\n"
-                    f"  ELSE\n"
-                    f"    {var_dact}(ii) = 0.0d0\n"
-                    f"  END IF\n"
-                    f"END DO"
-                )
-            return ""
 
         code = f"""\
 !>********************************************************************
@@ -273,14 +265,15 @@ MODULE nn_sef
 
 CONTAINS
 
-  SUBROUTINE nn_eval(nn_input, W_nn, dW_dI)
-    !> Evaluate NN: W(I1_bar, I2_bar, J) and dW/dI via backprop
+  SUBROUTINE nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
+    !> Evaluate NN: W(I1_bar, I2_bar, J), dW/dI, and d²W/dI² via backprop
     DOUBLE PRECISION, INTENT(IN)  :: nn_input(3)
     DOUBLE PRECISION, INTENT(OUT) :: W_nn
     DOUBLE PRECISION, INTENT(OUT) :: dW_dI(3)
+    DOUBLE PRECISION, INTENT(OUT) :: d2W_dI2(3,3)
 
     ! Local variables
-    INTEGER :: ii, jj
+    INTEGER :: ii, jj, kk
     {self._emit_nn_forward_and_backward()}
 
   END SUBROUTINE nn_eval
@@ -323,9 +316,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   DOUBLE PRECISION :: Jm23, Jm43
   INTEGER :: ii, jj, kk, ll
 
-  ! For tangent via numerical differentiation of dW/dI
-  DOUBLE PRECISION :: eps_fd
-  DOUBLE PRECISION :: nn_input_p(3), dW_dI_p(3), W_p
+  ! d²W/dI² from analytical NN Hessian
   DOUBLE PRECISION :: d2W_dI2(3,3)
 
   ! For tangent: material tangent in reference config
@@ -385,7 +376,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   nn_input(1) = I1_bar
   nn_input(2) = I2_bar
   nn_input(3) = Jac
-  CALL nn_eval(nn_input, W_nn, dW_dI)
+  CALL nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
 
   ! Store strain energy
   sse = W_nn
@@ -460,27 +451,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   END DO
 
   ! ================================================================
-  ! 6. Tangent: d²W/dI² via finite differences on NN
-  ! ================================================================
-  eps_fd = 1.0d-6
-  DO ii = 1, 3
-    nn_input_p = nn_input
-    nn_input_p(ii) = nn_input_p(ii) + eps_fd
-    CALL nn_eval(nn_input_p, W_p, dW_dI_p)
-    DO jj = 1, 3
-      d2W_dI2(jj, ii) = (dW_dI_p(jj) - dW_dI(jj)) / eps_fd
-    END DO
-  END DO
-  ! Symmetrize
-  DO ii = 1, 3
-    DO jj = ii+1, 3
-      d2W_dI2(ii,jj) = 0.5d0 * (d2W_dI2(ii,jj) + d2W_dI2(jj,ii))
-      d2W_dI2(jj,ii) = d2W_dI2(ii,jj)
-    END DO
-  END DO
-
-  ! ================================================================
-  ! 7. Material tangent: C_ABCD = 4 * d²W/dC²
+  ! 6. Material tangent: C_ABCD = 4 * d²W/dC²
   !    d²W/dCdC = sum_k sum_l (d²W/dIk*dIl) * (dIk/dC) x (dIl/dC)
   !             + sum_k (dW/dIk) * (d²Ik/dCdC)
   !
@@ -588,7 +559,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   END BLOCK
 
   ! ================================================================
-  ! 8. Push forward to spatial tangent: c_ijkl = (1/J) F_iA F_jB F_kC F_lD C_ABCD
+  ! 7. Push forward to spatial tangent: c_ijkl = (1/J) F_iA F_jB F_kC F_lD C_ABCD
   ! ================================================================
   cmat_spatial = 0.0d0
   DO ii = 1, 3
