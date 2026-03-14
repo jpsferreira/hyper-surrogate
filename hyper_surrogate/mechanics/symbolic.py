@@ -89,14 +89,13 @@ class SymbolicHandler:
     def isochoric_invariant2(self) -> Expr:
         """
         Compute the second isochoric invariant of the c_tensor.
-        I2 = 1/2 * (I1^2 - trace(c_tensor^2))
+        I2_bar = 1/2 * (I1^2 - trace(C^2)) * J^{-4/3}
 
         Returns:
             Expr: The second isochoric invariant of the c_tensor.
         """
-        return (Rational(1, 2) * (self.isochoric_invariant1**2 - self._c_tensor_squared().trace())) * (
-            self.invariant3 ** (-Rational(2, 3))
-        )
+        i1 = self.c_tensor.trace()
+        return Rational(1, 2) * (i1**2 - self._c_tensor_squared().trace()) * (self.invariant3 ** (-Rational(2, 3)))
 
     @property
     def invariant3(self) -> Expr:
