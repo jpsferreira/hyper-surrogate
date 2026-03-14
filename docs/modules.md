@@ -26,6 +26,7 @@
 
 ::: hyper_surrogate.export.weights
 ::: hyper_surrogate.export.fortran.emitter
+::: hyper_surrogate.export.fortran.hybrid
 ::: hyper_surrogate.export.fortran.analytical
 
 ## Reporting

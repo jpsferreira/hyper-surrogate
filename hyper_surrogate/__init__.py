@@ -19,6 +19,7 @@ except ImportError:
 # Export (requires torch for weights extraction)
 try:
     from hyper_surrogate.export.fortran.emitter import FortranEmitter  # noqa: F401
+    from hyper_surrogate.export.fortran.hybrid import HybridUMATEmitter  # noqa: F401
     from hyper_surrogate.export.weights import ExportedModel, extract_weights  # noqa: F401
 except ImportError:
     pass
