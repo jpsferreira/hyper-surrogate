@@ -75,7 +75,12 @@ def create_datasets(
         i1 = Kinematics.isochoric_invariant1(C)
         i2 = Kinematics.isochoric_invariant2(C)
         j = np.sqrt(Kinematics.det_invariant(C))  # J = sqrt(det(C))
-        inputs = np.column_stack([i1, i2, j])
+        if hasattr(material, "is_anisotropic") and material.is_anisotropic:
+            i4 = Kinematics.fiber_invariant4(C, material.fiber_direction)
+            i5 = Kinematics.fiber_invariant5(C, material.fiber_direction)
+            inputs = np.column_stack([i1, i2, j, i4, i5])
+        else:
+            inputs = np.column_stack([i1, i2, j])
     else:  # cauchy_green
         # 6 unique Voigt components: C11, C22, C33, C12, C13, C23
         inputs = np.column_stack([

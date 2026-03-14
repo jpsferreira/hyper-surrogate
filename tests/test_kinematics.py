@@ -115,3 +115,46 @@ def test_left_stretch_tensor(def_gradients, K):
 def test_rotation_tensor(def_gradients, K):
     rotation_tensor = K.rotation_tensor(def_gradients)
     assert rotation_tensor.shape == (SIZE, 3, 3)
+
+
+# --- Fiber invariant tests ---
+
+
+def test_fiber_invariant4_uniaxial():
+    """For uniaxial stretch along fiber, I4 = lambda^2."""
+    lam = 1.5
+    F = np.array([[[lam, 0, 0], [0, lam**-0.5, 0], [0, 0, lam**-0.5]]])
+    C = Kinematics.right_cauchy_green(F)
+    a0 = np.array([1.0, 0.0, 0.0])
+    i4 = Kinematics.fiber_invariant4(C, a0)
+    np.testing.assert_allclose(i4, [lam**2], atol=1e-12)
+
+
+def test_fiber_invariant5_uniaxial():
+    """For uniaxial stretch along fiber, I5 = lambda^4."""
+    lam = 1.5
+    F = np.array([[[lam, 0, 0], [0, lam**-0.5, 0], [0, 0, lam**-0.5]]])
+    C = Kinematics.right_cauchy_green(F)
+    a0 = np.array([1.0, 0.0, 0.0])
+    i5 = Kinematics.fiber_invariant5(C, a0)
+    np.testing.assert_allclose(i5, [lam**4], atol=1e-12)
+
+
+def test_fiber_invariants_per_sample_direction():
+    """Fiber invariants work with per-sample (N,3) directions."""
+    n = 5
+    gen = DeformationGenerator(seed=0)
+    F = gen.uniaxial(n, stretch_range=(0.8, 1.5))
+    C = Kinematics.right_cauchy_green(F)
+    a0 = np.tile([1.0, 0.0, 0.0], (n, 1))
+    i4_batch = Kinematics.fiber_invariant4(C, a0)
+    i4_single = Kinematics.fiber_invariant4(C, np.array([1.0, 0.0, 0.0]))
+    np.testing.assert_allclose(i4_batch, i4_single, atol=1e-12)
+
+
+def test_fiber_invariant4_identity():
+    """At identity (C=I), I4 = |a0|^2 = 1 for unit vector."""
+    C = np.eye(3)[np.newaxis, :, :]
+    a0 = np.array([0.0, 1.0, 0.0])
+    i4 = Kinematics.fiber_invariant4(C, a0)
+    np.testing.assert_allclose(i4, [1.0], atol=1e-12)

@@ -198,6 +198,39 @@ class Kinematics:
         v, vv = np.linalg.eig(self.left_cauchy_green(f))
         return np.einsum("...ij,...j->...ij", vv, v)
 
+    @staticmethod
+    def fiber_invariant4(c: np.ndarray, a0: np.ndarray) -> np.ndarray:
+        """Fiber invariant I4 = a0 . C . a0.
+
+        Args:
+            c: Right Cauchy-Green tensor (N, 3, 3).
+            a0: Fiber direction (3,) or (N, 3).
+
+        Returns:
+            I4 values (N,).
+        """
+        a0 = np.asarray(a0)
+        if a0.ndim == 1:
+            return np.einsum("i,nij,j->n", a0, c, a0)  # type: ignore[no-any-return]
+        return np.einsum("ni,nij,nj->n", a0, c, a0)  # type: ignore[no-any-return]
+
+    @staticmethod
+    def fiber_invariant5(c: np.ndarray, a0: np.ndarray) -> np.ndarray:
+        """Fiber invariant I5 = a0 . C^2 . a0.
+
+        Args:
+            c: Right Cauchy-Green tensor (N, 3, 3).
+            a0: Fiber direction (3,) or (N, 3).
+
+        Returns:
+            I5 values (N,).
+        """
+        a0 = np.asarray(a0)
+        c2 = np.einsum("nij,njk->nik", c, c)
+        if a0.ndim == 1:
+            return np.einsum("i,nij,j->n", a0, c2, a0)  # type: ignore[no-any-return]
+        return np.einsum("ni,nij,nj->n", a0, c2, a0)  # type: ignore[no-any-return]
+
     def rotation_tensor(self, f: np.ndarray) -> Any:
         """
         Compute the rotation tensors.

@@ -3,7 +3,7 @@
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 from hyper_surrogate.data.deformation import DeformationGenerator
 from hyper_surrogate.mechanics.kinematics import Kinematics
-from hyper_surrogate.mechanics.materials import Material, MooneyRivlin, NeoHooke
+from hyper_surrogate.mechanics.materials import HolzapfelOgden, Material, MooneyRivlin, NeoHooke
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 from hyper_surrogate.reporting.reporter import Reporter
 
@@ -30,6 +30,7 @@ __all__ = [
     "Material",
     "NeoHooke",
     "MooneyRivlin",
+    "HolzapfelOgden",
     "DeformationGenerator",
     "MaterialDataset",
     "Normalizer",

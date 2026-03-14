@@ -1,10 +1,14 @@
 """Hybrid UMAT generator: NN-based SEF with analytical continuum mechanics.
 
-The NN learns W(I1_bar, I2_bar, J). Everything else — kinematics,
+The NN learns W(invariants). Everything else — kinematics,
 stress, and tangent — is computed analytically in Fortran:
 
     DFGRD1 → C → invariants → NN(W) → backprop(dW/dI, d²W/dI²)
            → PK2 → Cauchy stress → spatial tangent + Jaumann correction
+
+Supports:
+  - Isotropic: W(I1_bar, I2_bar, J)        — input_dim=3
+  - Anisotropic: W(I1_bar, I2_bar, J, I4, I5) — input_dim=5
 """
 
 from __future__ import annotations
@@ -234,6 +238,118 @@ class HybridUMATEmitter:
 
         return "\n".join(lines)
 
+    # ------------------------------------------------------------------
+    # Anisotropic (in_dim=5) Fortran snippets
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _emit_aniso_declarations() -> str:
+        """Extra local variable declarations for anisotropic UMAT."""
+        return """\
+  ! Fiber invariants (anisotropic)
+  DOUBLE PRECISION :: a0(3), Ca0(3), I4, I5
+  DOUBLE PRECISION :: dI4_dC(3,3), dI5_dC(3,3)
+"""
+
+    @staticmethod
+    def _emit_aniso_invariants() -> str:
+        """Compute fiber invariants I4, I5 from C and a0."""
+        return """
+  ! Fiber direction from material properties
+  a0(1) = props(1)
+  a0(2) = props(2)
+  a0(3) = props(3)
+
+  ! Ca0 = C * a0
+  DO ii = 1, 3
+    Ca0(ii) = 0.0d0
+    DO jj = 1, 3
+      Ca0(ii) = Ca0(ii) + C(ii,jj) * a0(jj)
+    END DO
+  END DO
+
+  ! I4 = a0 . C . a0
+  I4 = 0.0d0
+  DO ii = 1, 3
+    I4 = I4 + a0(ii) * Ca0(ii)
+  END DO
+
+  ! I5 = a0 . C^2 . a0 = Ca0 . Ca0
+  I5 = 0.0d0
+  DO ii = 1, 3
+    I5 = I5 + Ca0(ii) * Ca0(ii)
+  END DO
+"""
+
+    @staticmethod
+    def _emit_aniso_nn_input() -> str:
+        """Set fiber invariant entries in nn_input."""
+        return """\
+  nn_input(4) = I4
+  nn_input(5) = I5
+"""
+
+    @staticmethod
+    def _emit_aniso_didC() -> str:
+        """Compute dI4/dC and dI5/dC."""
+        return """
+  ! dI4/dC = a0 (x) a0
+  DO ii = 1, 3
+    DO jj = 1, 3
+      dI4_dC(ii,jj) = a0(ii) * a0(jj)
+    END DO
+  END DO
+
+  ! dI5/dC = a0 (x) Ca0 + Ca0 (x) a0
+  DO ii = 1, 3
+    DO jj = 1, 3
+      dI5_dC(ii,jj) = a0(ii) * Ca0(jj) + Ca0(ii) * a0(jj)
+    END DO
+  END DO
+"""
+
+    @staticmethod
+    def _emit_aniso_pk2_terms() -> str:
+        """Additional PK2 terms for I4, I5."""
+        return """ &
+        + dW_dI(4) * dI4_dC(ii,jj) &
+        + dW_dI(5) * dI5_dC(ii,jj)"""
+
+    @staticmethod
+    def _emit_aniso_dIdC_pack() -> str:
+        """Pack fiber dI/dC into dIdC array."""
+        return """\
+    DO ii = 1, 3
+      DO jj = 1, 3
+        dIdC(ii, jj, 4) = dI4_dC(ii, jj)
+        dIdC(ii, jj, 5) = dI5_dC(ii, jj)
+      END DO
+    END DO
+"""
+
+    @staticmethod
+    def _emit_aniso_d2IdC2() -> str:
+        """Second derivatives d²I4/dCdC=0, d²I5/dCdC for tangent."""
+        return """
+    ! d²I4/dCdC = 0 (dI4/dC = a0 (x) a0 is constant w.r.t. C)
+    ! No contribution needed for I4.
+
+    ! d²I5/(dC_AB dC_CD) = 0.5*(a0_A*a0_D*delta_BC + a0_A*a0_C*delta_BD
+    !                          + a0_B*a0_D*delta_AC + a0_B*a0_C*delta_AD)
+    DO ii = 1, 3
+      DO jj = 1, 3
+        DO kk = 1, 3
+          DO ll = 1, 3
+            val = 0.5d0 * ( &
+                a0(ii)*a0(ll)*eye3(jj,kk) + a0(ii)*a0(kk)*eye3(jj,ll) &
+              + a0(jj)*a0(ll)*eye3(ii,kk) + a0(jj)*a0(kk)*eye3(ii,ll))
+            dPK2_dC(ii,jj,kk,ll) = dPK2_dC(ii,jj,kk,ll) + 4.0d0 * dW_dI(5) * val
+          END DO
+        END DO
+      END DO
+    END DO
+"""
+
     def emit(self) -> str:
         """Generate the complete hybrid UMAT Fortran code."""
         today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -241,6 +357,15 @@ class HybridUMATEmitter:
         layers = self.exported.layers
         weights = self.exported.weights
         hidden_dims = [weights[layer.weights].shape[0] for layer in layers]
+        in_dim = self.exported.metadata["input_dim"]
+        aniso = in_dim == 5
+
+        if aniso:
+            input_desc = "I1_bar, I2_bar, J, I4, I5"
+            n_inv = 5
+        else:
+            input_desc = "I1_bar, I2_bar, J"
+            n_inv = 3
 
         code = f"""\
 !>********************************************************************
@@ -248,13 +373,13 @@ class HybridUMATEmitter:
 !>
 !> Generated: {today}
 !> Architecture: MLP {" x ".join(str(d) for d in hidden_dims)}
-!> Input: I1_bar, I2_bar, J  ->  Output: W (strain energy)
+!> Input: {input_desc}  ->  Output: W (strain energy)
 !>
-!> The neural network provides W(I1_bar, I2_bar, J).
-!> Stress and tangent are derived analytically via chain rule:
-!>   PK2 = 2 * (dW/dI1 * dI1/dC + dW/dI2 * dI2/dC + dW/dJ * dJ/dC)
+!> The neural network provides W({input_desc}).
+!> Stress and tangent are derived analytically via chain rule.
 !>   Cauchy = (1/J) * F * PK2 * F^T
 !>   Tangent = push-forward of material tangent + Jaumann correction
+{"!> Fiber direction a0 is read from props(1:3)." if aniso else ""}
 !>********************************************************************
 
 MODULE nn_sef
@@ -266,11 +391,11 @@ MODULE nn_sef
 CONTAINS
 
   SUBROUTINE nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
-    !> Evaluate NN: W(I1_bar, I2_bar, J), dW/dI, and d²W/dI² via backprop
-    DOUBLE PRECISION, INTENT(IN)  :: nn_input(3)
+    !> Evaluate NN: W({input_desc}), dW/dI, and d²W/dI² via backprop
+    DOUBLE PRECISION, INTENT(IN)  :: nn_input({n_inv})
     DOUBLE PRECISION, INTENT(OUT) :: W_nn
-    DOUBLE PRECISION, INTENT(OUT) :: dW_dI(3)
-    DOUBLE PRECISION, INTENT(OUT) :: d2W_dI2(3,3)
+    DOUBLE PRECISION, INTENT(OUT) :: dW_dI({n_inv})
+    DOUBLE PRECISION, INTENT(OUT) :: d2W_dI2({n_inv},{n_inv})
 
     ! Local variables
     INTEGER :: ii, jj, kk
@@ -309,15 +434,15 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   DOUBLE PRECISION :: C(3,3), invC(3,3), detC, detF
   DOUBLE PRECISION :: I1, I2, I1_bar, I2_bar, Jac
   DOUBLE PRECISION :: trC, trC2
-  DOUBLE PRECISION :: nn_input(3), W_nn, dW_dI(3)
+  DOUBLE PRECISION :: nn_input({n_inv}), W_nn, dW_dI({n_inv})
   DOUBLE PRECISION :: PK2(3,3), sigma_full(3,3)
   DOUBLE PRECISION :: dI1_dC(3,3), dI2_dC(3,3), dJ_dC(3,3)
   DOUBLE PRECISION :: eye3(3,3)
   DOUBLE PRECISION :: Jm23, Jm43
   INTEGER :: ii, jj, kk, ll
-
+{self._emit_aniso_declarations() if aniso else ""}
   ! d²W/dI² from analytical NN Hessian
-  DOUBLE PRECISION :: d2W_dI2(3,3)
+  DOUBLE PRECISION :: d2W_dI2({n_inv},{n_inv})
 
   ! For tangent: material tangent in reference config
   DOUBLE PRECISION :: dPK2_dC(3,3,3,3)
@@ -369,14 +494,14 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
 
   I1_bar = trC * Jm23
   I2_bar = 0.5d0 * (trC**2 - trC2) * Jm43
-
+{self._emit_aniso_invariants() if aniso else ""}
   ! ================================================================
-  ! 2. NN evaluation: W(I1_bar, I2_bar, J) and dW/dI
+  ! 2. NN evaluation: W({input_desc}) and dW/dI
   ! ================================================================
   nn_input(1) = I1_bar
   nn_input(2) = I2_bar
   nn_input(3) = Jac
-  CALL nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
+{self._emit_aniso_nn_input() if aniso else ""}  CALL nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
 
   ! Store strain energy
   sse = W_nn
@@ -416,7 +541,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       dJ_dC(ii,jj) = 0.5d0 * Jac * invC(ii,jj)
     END DO
   END DO
-
+{self._emit_aniso_didC() if aniso else ""}
   ! ================================================================
   ! 4. PK2 stress: S = 2 * dW/dC = 2 * sum_k (dW/dIk * dIk/dC)
   ! ================================================================
@@ -425,7 +550,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       PK2(ii,jj) = 2.0d0 * ( &
           dW_dI(1) * dI1_dC(ii,jj) &
         + dW_dI(2) * dI2_dC(ii,jj) &
-        + dW_dI(3) * dJ_dC(ii,jj) )
+        + dW_dI(3) * dJ_dC(ii,jj){self._emit_aniso_pk2_terms() if aniso else ""} )
     END DO
   END DO
 
@@ -454,18 +579,11 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   ! 6. Material tangent: C_ABCD = 4 * d²W/dC²
   !    d²W/dCdC = sum_k sum_l (d²W/dIk*dIl) * (dIk/dC) x (dIl/dC)
   !             + sum_k (dW/dIk) * (d²Ik/dCdC)
-  !
-  !    We compute the first term (dominant) and push forward.
-  !    Second-order invariant derivatives (d²I/dC²) are included
-  !    for accuracy.
   ! ================================================================
   dPK2_dC = 0.0d0
 
-  ! Term 1: 4 * sum_k,l d²W/(dIk dIl) * dIk/dC x dIl/dC
-  ! We store the three dI/dC tensors in an array for convenience
-  ! Using explicit loops for clarity
   BLOCK
-    DOUBLE PRECISION :: dIdC(3, 3, 3)  ! dIdC(:,:,k) = dIk/dC
+    DOUBLE PRECISION :: dIdC(3, 3, {n_inv})  ! dIdC(:,:,k) = dIk/dC
     DOUBLE PRECISION :: val
 
     DO ii = 1, 3
@@ -475,15 +593,15 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
         dIdC(ii, jj, 3) = dJ_dC(ii, jj)
       END DO
     END DO
-
+{self._emit_aniso_dIdC_pack() if aniso else ""}
     ! C_ABCD += 4 * sum_k sum_l d²W/dIk*dIl * (dIk/dC)_AB * (dIl/dC)_CD
     DO ii = 1, 3
       DO jj = 1, 3
         DO kk = 1, 3
           DO ll = 1, 3
             val = 0.0d0
-            DO mm = 1, 3
-              DO nn = 1, 3
+            DO mm = 1, {n_inv}
+              DO nn = 1, {n_inv}
                 val = val + d2W_dI2(mm, nn) * dIdC(ii, jj, mm) * dIdC(kk, ll, nn)
               END DO
             END DO
@@ -493,14 +611,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       END DO
     END DO
 
-    ! Term 2: 2 * sum_k dW/dIk * d²Ik/dCdC
-    ! d²I1_bar/dCdC and d²I2_bar/dCdC are complex but important for accuracy.
-    ! The dominant second-order terms come from dJ/dC:
-    !   d²J/dCdC = (J/4) * (C^-1 x C^-1 - 2 * dC^-1/dC)
-    !   where (dC^-1/dC)_{{ABCD}} = -0.5*(C^-1_AC * C^-1_BD + C^-1_AD * C^-1_BC)
-    !
-    ! d²I1_bar/dCdC involves terms with C^-1 x C^-1 and I x C^-1 etc.
-    ! For brevity, we include the key volumetric d²J/dCdC term.
+    ! Term 2: 4 * sum_k dW/dIk * d²Ik/dCdC
 
     ! d²J/(dC_AB dC_CD) = J/4 * (invC_AB*invC_CD - invC_AC*invC_BD - invC_AD*invC_BC)
     DO ii = 1, 3
@@ -516,12 +627,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       END DO
     END DO
 
-    ! d²I1_bar/dCdC contributions
-    ! = J^(-2/3) * {{(-1/3)[I x C^-1 + C^-1 x I]
-    !   + (1/3)*trC * [0.5*(C^-1_AC*C^-1_BD + C^-1_AD*C^-1_BC)]
-    !   + (1/9)*trC * C^-1 x C^-1
-    !   - (1/3) * C^-1 x I }}  ... simplified
-    ! Full expression:
+    ! d²I1_bar/dCdC
     DO ii = 1, 3
       DO jj = 1, 3
         DO kk = 1, 3
@@ -537,7 +643,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       END DO
     END DO
 
-    ! d²I2_bar/dCdC contributions (keeping dominant terms)
+    ! d²I2_bar/dCdC
     DO ii = 1, 3
       DO jj = 1, 3
         DO kk = 1, 3
@@ -555,7 +661,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
         END DO
       END DO
     END DO
-
+{self._emit_aniso_d2IdC2() if aniso else ""}
   END BLOCK
 
   ! ================================================================
