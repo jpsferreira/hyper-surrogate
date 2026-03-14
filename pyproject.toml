@@ -1,6 +1,6 @@
 [project]
 name = "hyper-surrogate"
-version = "0.0.1"
+version = "0.2.0"
 description = "Hyperelastic Surrogates"
 authors = [{ name = "Joao Ferreira", email = "fj.ferreira@fe.up.pt" }]
 readme = "README.md"
