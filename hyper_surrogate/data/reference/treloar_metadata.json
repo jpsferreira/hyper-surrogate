@@ -1,0 +1,9 @@
+{
+    "name": "treloar",
+    "description": "Treloar (1944) uniaxial tension data for vulcanized rubber",
+    "reference": "Treloar, L.R.G., 1944. Stress-strain data for vulcanised rubber under various types of deformation. Trans. Faraday Soc., 40, pp.59-70.",
+    "test_type": "uniaxial",
+    "stretch_unit": "dimensionless",
+    "stress_unit": "MPa",
+    "notes": "Classic benchmark dataset widely used for validating hyperelastic models"
+}

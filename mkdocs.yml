@@ -10,6 +10,8 @@ copyright: Maintained by <a href="https://github.com/jpsferreira">Joao Ferreira<
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Theory: theory.md
+  - Materials: materials.md
   - Examples: examples.md
   - API Reference: modules.md
   - About: about.md
