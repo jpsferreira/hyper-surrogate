@@ -102,5 +102,5 @@ def test_grad_shape():
     mat = Ogden()
     F = _uniaxial_F(1.1, axis=0, n=3)
     C = Kinematics.right_cauchy_green(F)
-    grad = mat.evaluate_energy_grad_invariants(C)
+    grad = mat.evaluate_energy_grad_voigt(C)
     assert grad.shape == (3, 6)

@@ -42,20 +42,23 @@ def main() -> None:
     result = trainer.fit()
 
     print("\nTraining complete:")
-    print(f"  Final train loss: {result.history["train_loss"][-1]:.6f}")
-    print(f"  Final val loss: {result.history["val_loss"][-1]:.6f}")
+    train_loss = result.history["train_loss"][-1]
+    val_loss = result.history["val_loss"][-1]
+    print(f"  Final train loss: {train_loss:.6f}")
+    print(f"  Final val loss: {val_loss:.6f}")
 
     # Discover active terms
     print("\nActive basis functions (weight > 0.01):")
     terms = model.get_active_terms(threshold=0.01)
     for t in terms:
         inv_name = f"I{t["invariant"] + 1}_bar" if t["invariant"] < 2 else "J"
+        w = t["weight"]
         if t["type"] == "polynomial":
-            print(f"  w={t["weight"]:.4f}: ({inv_name})^{t["power"]}")
+            print(f"  w={w:.4f}: ({inv_name})^{t["power"]}")
         elif t["type"] == "exponential":
-            print(f"  w={t["weight"]:.4f}: exp({t["stiffness"]:.3f} * {inv_name}^2) - 1")
+            print(f"  w={w:.4f}: exp({t["stiffness"]:.3f} * {inv_name}^2) - 1")
         elif t["type"] == "logarithmic":
-            print(f"  w={t["weight"]:.4f}: log(1 + {inv_name}^2)")
+            print(f"  w={w:.4f}: log(1 + {inv_name}^2)")
 
     print(f"\nTotal active terms: {len(terms)} / {model._n_basis}")
     print("Expected: dominant polynomial terms on I1_bar (NeoHooke ~ C10*(I1_bar - 3))")

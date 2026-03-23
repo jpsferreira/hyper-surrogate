@@ -520,12 +520,14 @@ class Ogden(Material):
 
         return W
 
-    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
-        """Numerical gradient via finite differences on the C components."""
+    def evaluate_energy_grad_voigt(self, c_batch: np.ndarray) -> np.ndarray:
+        """Numerical gradient dW/dC via finite differences on the 6 Voigt components of C.
+
+        Returns (N, 6) array. Not to be confused with invariant gradients.
+        """
         n = len(c_batch)
         eps = 1e-7
         W0 = self.evaluate_energy(c_batch)
-        # Return gradient w.r.t. 6 Voigt components of C
         grad = np.zeros((n, 6))
         idx_map = [(0, 0), (1, 1), (2, 2), (0, 1), (0, 2), (1, 2)]
         for k, (i, j) in enumerate(idx_map):
@@ -535,6 +537,11 @@ class Ogden(Material):
             W_p = self.evaluate_energy(c_p)
             grad[:, k] = (W_p - W0) / eps
         return grad
+
+    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
+        """Not available for Ogden — uses principal stretch formulation, not invariants."""
+        msg = "Ogden uses principal stretches; use evaluate_energy_grad_voigt for dW/dC Voigt gradients"
+        raise NotImplementedError(msg)
 
 
 class Guccione(Material):
@@ -639,8 +646,11 @@ class Guccione(Material):
 
         return np.asarray(W)
 
-    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
-        """Numerical gradient via finite differences on C Voigt components."""
+    def evaluate_energy_grad_voigt(self, c_batch: np.ndarray) -> np.ndarray:
+        """Numerical gradient dW/dC via finite differences on the 6 Voigt components of C.
+
+        Returns (N, 6) array. Not to be confused with invariant gradients.
+        """
         n = len(c_batch)
         eps = 1e-7
         W0 = self.evaluate_energy(c_batch)
@@ -653,6 +663,11 @@ class Guccione(Material):
             W_p = self.evaluate_energy(c_p)
             grad[:, k] = (W_p - W0) / eps
         return grad
+
+    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
+        """Not available for Guccione — uses C-component formulation, not invariants."""
+        msg = "Guccione uses C-component formulation; use evaluate_energy_grad_voigt for dW/dC Voigt gradients"
+        raise NotImplementedError(msg)
 
 
 class Fung(Material):
@@ -721,8 +736,11 @@ class Fung(Material):
 
         return W
 
-    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
-        """Numerical gradient via finite differences on C Voigt components."""
+    def evaluate_energy_grad_voigt(self, c_batch: np.ndarray) -> np.ndarray:
+        """Numerical gradient dW/dC via finite differences on the 6 Voigt components of C.
+
+        Returns (N, 6) array. Not to be confused with invariant gradients.
+        """
         n = len(c_batch)
         eps = 1e-7
         W0 = self.evaluate_energy(c_batch)
@@ -735,3 +753,8 @@ class Fung(Material):
             W_p = self.evaluate_energy(c_p)
             grad[:, k] = (W_p - W0) / eps
         return grad
+
+    def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
+        """Not available for Fung — uses C-component formulation, not invariants."""
+        msg = "Fung uses C-component formulation; use evaluate_energy_grad_voigt for dW/dC Voigt gradients"
+        raise NotImplementedError(msg)

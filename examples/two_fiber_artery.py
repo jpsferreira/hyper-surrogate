@@ -37,36 +37,48 @@ def main() -> None:
     print(f"{"Stretch":>8s} {"W_fiber1":>12s} {"W_fiber2":>12s} {"W_total":>12s}")
     print("-" * 50)
 
+    # Build symbolic energy: shared isotropic/volumetric + two fiber contributions.
+    # Using a single material's SEF for the shared terms avoids double-counting.
+    from sympy import Symbol, lambdify
+
+    i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
+    i4s_1, i5s_1 = Symbol("I4_1"), Symbol("I5_1")
+    i4s_2, i5s_2 = Symbol("I4_2"), Symbol("I5_2")
+
+    # Full energy from fiber 1 (includes isotropic + volumetric + fiber)
+    W1_expr = mat1.sef_from_invariants(i1s, i2s, js, i4s_1, i5s_1)
+    # Fiber-only energy from fiber 2 (subtract isotropic + volumetric to avoid double-counting)
+    W2_full = mat2.sef_from_invariants(i1s, i2s, js, i4s_2, i5s_2)
+    W2_no_fiber = mat2.sef_from_invariants(i1s, i2s, js)  # isotropic + volumetric only
+    W2_fiber_only = W2_full - W2_no_fiber
+
+    W_total_expr = W1_expr + W2_fiber_only
+
+    param_syms = list(mat1._symbols.values())
+    all_syms = (i1s, i2s, js, i4s_1, i5s_1, i4s_2, i5s_2, *param_syms)
+    fn_total = lambdify(all_syms, W_total_expr, modules="numpy")
+    fn_fiber1 = lambdify((i1s, i2s, js, i4s_1, i5s_1, *param_syms), W1_expr, modules="numpy")
+    fn_fiber2 = lambdify((i1s, i2s, js, i4s_2, i5s_2, *param_syms), W2_fiber_only, modules="numpy")
+
     for lam in stretches:
         F = np.array([[[lam, 0, 0], [0, lam, 0], [0, 0, 1.0 / (lam * lam)]]])
         C = Kinematics.right_cauchy_green(F)
 
-        # Compute invariants for each fiber family
+        # Compute invariants
         i1 = Kinematics.isochoric_invariant1(C)
+        i2 = Kinematics.isochoric_invariant2(C)
         j = np.sqrt(Kinematics.det_invariant(C))
         i4_1 = Kinematics.fiber_invariant4(C, fiber1)
-        i4_2 = Kinematics.fiber_invariant4(C, fiber2)
-
-        # Total energy needs proper evaluation
-        from sympy import Symbol, lambdify
-
-        syms = [Symbol("I1b"), Symbol("I2b"), Symbol("J"), Symbol("I4"), Symbol("I5")]
-        W1_expr = mat1.sef_from_invariants(*syms)
-        param_syms1 = list(mat1._symbols.values())
-        fn1 = lambdify((*syms, *param_syms1), W1_expr, modules="numpy")
-
-        i2 = Kinematics.isochoric_invariant2(C)
         i5_1 = Kinematics.fiber_invariant5(C, fiber1)
+        i4_2 = Kinematics.fiber_invariant4(C, fiber2)
         i5_2 = Kinematics.fiber_invariant5(C, fiber2)
 
-        W1 = float(fn1(i1[0], i2[0], j[0], i4_1[0], i5_1[0], *mat1._params.values()))
+        pvals = list(mat1._params.values())
+        W1 = float(fn_fiber1(i1[0], i2[0], j[0], i4_1[0], i5_1[0], *pvals))
+        W2 = float(fn_fiber2(i1[0], i2[0], j[0], i4_2[0], i5_2[0], *pvals))
+        Wt = float(fn_total(i1[0], i2[0], j[0], i4_1[0], i5_1[0], i4_2[0], i5_2[0], *pvals))
 
-        W2_expr = mat2.sef_from_invariants(*syms)
-        param_syms2 = list(mat2._symbols.values())
-        fn2 = lambdify((*syms, *param_syms2), W2_expr, modules="numpy")
-        W2 = float(fn2(i1[0], i2[0], j[0], i4_2[0], i5_2[0], *mat2._params.values()))
-
-        print(f"{lam:8.3f} {W1:12.4f} {W2:12.4f} {W1 + W2:12.4f}")
+        print(f"{lam:8.3f} {W1:12.4f} {W2:12.4f} {Wt:12.4f}")
 
 
 if __name__ == "__main__":
