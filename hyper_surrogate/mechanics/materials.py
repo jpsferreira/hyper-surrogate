@@ -18,20 +18,43 @@ class Material:
         self,
         parameters: dict[str, float],
         fiber_direction: np.ndarray | None = None,
+        fiber_directions: list[np.ndarray] | None = None,
     ) -> None:
         self._handler = SymbolicHandler()
         self._params = parameters
         self._symbols = {k: Symbol(k) for k in parameters}
-        self._fiber_direction = np.asarray(fiber_direction, dtype=float) if fiber_direction is not None else None
+        # Normalize fiber storage: always a list
+        if fiber_directions is not None:
+            self._fiber_directions = [np.asarray(d, dtype=float) for d in fiber_directions]
+        elif fiber_direction is not None:
+            self._fiber_directions = [np.asarray(fiber_direction, dtype=float)]
+        else:
+            self._fiber_directions = []
 
     @property
     def is_anisotropic(self) -> bool:
         """Whether this material depends on fiber invariants (I4, I5)."""
-        return self._fiber_direction is not None
+        return len(self._fiber_directions) > 0
 
     @property
     def fiber_direction(self) -> np.ndarray | None:
-        return self._fiber_direction
+        """First fiber direction (backward compat). None if isotropic."""
+        return self._fiber_directions[0] if self._fiber_directions else None
+
+    @property
+    def fiber_directions(self) -> list[np.ndarray]:
+        """All fiber directions. Empty list if isotropic."""
+        return self._fiber_directions
+
+    @property
+    def num_fiber_families(self) -> int:
+        """Number of fiber families."""
+        return len(self._fiber_directions)
+
+    @property
+    def input_dim(self) -> int:
+        """Invariant input dimension: 3 (isotropic) + 2 per fiber family."""
+        return 3 + 2 * self.num_fiber_families
 
     @property
     def handler(self) -> SymbolicHandler:
@@ -54,6 +77,27 @@ class Material:
         Override in subclasses to enable energy gradient computation w.r.t. invariants.
         """
         raise NotImplementedError
+
+    def sef_from_all_invariants(
+        self,
+        i1_bar: Symbol,
+        i2_bar: Symbol,
+        j: Symbol,
+        fiber_invariants: list[tuple[Symbol, Symbol]] | None = None,
+    ) -> Expr:
+        """Return SEF as a function of all invariant symbols including multi-fiber.
+
+        ``fiber_invariants`` is a list of (I4_k, I5_k) tuples, one per fiber family.
+        Default implementation delegates to :meth:`sef_from_invariants` for 0 or 1 fibers.
+        Override in multi-fiber subclasses.
+        """
+        if not fiber_invariants:
+            return self.sef_from_invariants(i1_bar, i2_bar, j)
+        if len(fiber_invariants) == 1:
+            i4, i5 = fiber_invariants[0]
+            return self.sef_from_invariants(i1_bar, i2_bar, j, i4, i5)
+        msg = f"{type(self).__name__} does not support {len(fiber_invariants)} fiber families"
+        raise NotImplementedError(msg)
 
     @cached_property
     def pk2_expr(self) -> Matrix:
@@ -92,7 +136,7 @@ class Material:
     def evaluate_energy_grad_invariants(self, c_batch: np.ndarray) -> np.ndarray:
         """Compute dW/d(invariants) for (N,3,3) C tensors.
 
-        Returns (N,3) for isotropic materials or (N,5) for anisotropic.
+        Returns (N, input_dim) where input_dim = 3 + 2*num_fiber_families.
         """
         from sympy import diff
         from sympy import lambdify as sym_lambdify
@@ -101,14 +145,16 @@ class Material:
 
         i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
 
-        inv_syms: tuple[Symbol, ...]
-        if self.is_anisotropic:
-            i4s, i5s = Symbol("I4"), Symbol("I5")
-            W = self.sef_from_invariants(i1s, i2s, js, i4s, i5s)
-            inv_syms = (i1s, i2s, js, i4s, i5s)
-        else:
-            W = self.sef_from_invariants(i1s, i2s, js)
-            inv_syms = (i1s, i2s, js)
+        inv_syms: list[Symbol] = [i1s, i2s, js]
+        fiber_inv_pairs: list[tuple[Symbol, Symbol]] = []
+
+        for k in range(self.num_fiber_families):
+            i4k = Symbol(f"I4_{k}")
+            i5k = Symbol(f"I5_{k}")
+            inv_syms.extend([i4k, i5k])
+            fiber_inv_pairs.append((i4k, i5k))
+
+        W = self.sef_from_all_invariants(i1s, i2s, js, fiber_inv_pairs or None)
 
         dW = [diff(W, s) for s in inv_syms]
         param_syms = list(self._symbols.values())
@@ -121,13 +167,12 @@ class Material:
         param_vals = list(self._params.values())
         n = len(c_batch)
 
-        if self.is_anisotropic:
-            a0 = self._fiber_direction  # guaranteed not None when is_anisotropic
-            i4 = Kinematics.fiber_invariant4(c_batch, a0)  # type: ignore[arg-type]
-            i5 = Kinematics.fiber_invariant5(c_batch, a0)  # type: ignore[arg-type]
-            results = fn(i1, i2, j, i4, i5, *param_vals)
-        else:
-            results = fn(i1, i2, j, *param_vals)
+        inv_vals: list[np.ndarray] = [i1, i2, j]
+        for a0 in self._fiber_directions:
+            inv_vals.append(Kinematics.fiber_invariant4(c_batch, a0))
+            inv_vals.append(Kinematics.fiber_invariant5(c_batch, a0))
+
+        results = fn(*inv_vals, *param_vals)
 
         return np.column_stack([np.broadcast_to(np.asarray(r, dtype=float), (n,)) for r in results])
 
@@ -600,7 +645,7 @@ class Guccione(Material):
 
     def _rotation_matrix(self) -> np.ndarray:
         """Build rotation from global to fiber (f, s, n) frame."""
-        fiber_dir = self._fiber_direction
+        fiber_dir = self.fiber_direction
         if fiber_dir is None:  # pragma: no cover
             msg = "Guccione requires a fiber direction"
             raise ValueError(msg)
@@ -758,3 +803,113 @@ class Fung(Material):
         """Not available for Fung — uses C-component formulation, not invariants."""
         msg = "Fung uses C-component formulation; use evaluate_energy_grad_voigt for dW/dC Voigt gradients"
         raise NotImplementedError(msg)
+
+
+class HolzapfelOgdenBiaxial(Material):
+    """Two-fiber Holzapfel-Ogden model for arterial wall tissue.
+
+    W = (a/2b)(exp(b(I1_bar - 3)) - 1)
+      + sum_{k=1}^{2} (af/2bf)(exp(bf*(I4_k - 1)^2) - 1)
+      + vol(J)
+
+    Each fiber family contributes an I4 term; both share the same parameters.
+    """
+
+    DEFAULT_PARAMS: ClassVar[dict[str, float]] = {
+        "a": 0.059,
+        "b": 8.023,
+        "af": 18.472,
+        "bf": 16.026,
+        "KBULK": 1000.0,
+    }
+
+    def __init__(
+        self,
+        parameters: dict[str, float] | None = None,
+        fiber_directions: list[np.ndarray] | None = None,
+    ) -> None:
+        params = {**self.DEFAULT_PARAMS, **(parameters or {})}
+        if fiber_directions is None:
+            theta = np.radians(39.0)
+            fiber_directions = [
+                np.array([np.cos(theta), np.sin(theta), 0.0]),
+                np.array([np.cos(theta), -np.sin(theta), 0.0]),
+            ]
+        if len(fiber_directions) != 2:
+            msg = f"HolzapfelOgdenBiaxial requires exactly 2 fiber directions, got {len(fiber_directions)}"
+            raise ValueError(msg)
+        super().__init__(params, fiber_directions=fiber_directions)
+
+    def _volumetric(self, j: Symbol) -> Expr:
+        KBULK = self._symbols["KBULK"]
+        i3 = j**2
+        return Rational(1, 4) * KBULK * (i3 - 1 - 2 * log(i3 ** Rational(1, 2)))
+
+    @property
+    def sef(self) -> Expr:
+        msg = "HolzapfelOgdenBiaxial.sef requires fiber invariants; use sef_from_all_invariants instead"
+        raise NotImplementedError(msg)
+
+    def sef_from_invariants(
+        self,
+        i1_bar: Symbol,
+        i2_bar: Symbol,
+        j: Symbol,
+        i4: Symbol | None = None,
+        i5: Symbol | None = None,
+    ) -> Expr:
+        msg = "HolzapfelOgdenBiaxial has 2 fibers; use sef_from_all_invariants instead"
+        raise NotImplementedError(msg)
+
+    def sef_from_all_invariants(
+        self,
+        i1_bar: Symbol,
+        i2_bar: Symbol,
+        j: Symbol,
+        fiber_invariants: list[tuple[Symbol, Symbol]] | None = None,
+    ) -> Expr:
+        a_s = self._symbols["a"]
+        b_s = self._symbols["b"]
+        af_s = self._symbols["af"]
+        bf_s = self._symbols["bf"]
+
+        # Isotropic ground substance
+        W: Expr = (a_s / (2 * b_s)) * (sympy_exp(b_s * (i1_bar - 3)) - 1)
+
+        # Fiber contributions
+        if fiber_invariants is not None:
+            for i4_k, _i5_k in fiber_invariants:
+                W = W + (af_s / (2 * bf_s)) * (sympy_exp(bf_s * (i4_k - 1) ** 2) - 1)
+
+        return W + self._volumetric(j)
+
+    def evaluate_energy(self, c_batch: np.ndarray) -> np.ndarray:
+        """Evaluate strain energy for (N,3,3) C tensors via invariants."""
+        from sympy import lambdify as sym_lambdify
+
+        from hyper_surrogate.mechanics.kinematics import Kinematics
+
+        i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
+        fiber_inv_pairs: list[tuple[Symbol, Symbol]] = []
+        inv_syms: list[Symbol] = [i1s, i2s, js]
+        for k in range(self.num_fiber_families):
+            i4k, i5k = Symbol(f"I4_{k}"), Symbol(f"I5_{k}")
+            inv_syms.extend([i4k, i5k])
+            fiber_inv_pairs.append((i4k, i5k))
+
+        W = self.sef_from_all_invariants(i1s, i2s, js, fiber_inv_pairs)
+        param_syms = list(self._symbols.values())
+        fn = sym_lambdify((*inv_syms, *param_syms), W, modules="numpy")
+
+        i1 = Kinematics.isochoric_invariant1(c_batch)
+        i2 = Kinematics.isochoric_invariant2(c_batch)
+        j = np.sqrt(Kinematics.det_invariant(c_batch))
+
+        inv_vals: list[np.ndarray] = [i1, i2, j]
+        for a0 in self._fiber_directions:
+            inv_vals.append(Kinematics.fiber_invariant4(c_batch, a0))
+            inv_vals.append(Kinematics.fiber_invariant5(c_batch, a0))
+
+        param_vals = list(self._params.values())
+        results = fn(*inv_vals, *param_vals)
+        return np.asarray(results, dtype=float)

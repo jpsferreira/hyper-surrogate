@@ -53,6 +53,19 @@ class MaterialDataset(Dataset):
         return x, y
 
 
+def _pk2_voigt(material: Any, c_batch: np.ndarray) -> np.ndarray:
+    """Compute PK2 stress in Voigt notation."""
+    pk2_batch = material.evaluate_pk2(c_batch)  # (N, 3, 3)
+    return np.column_stack([
+        pk2_batch[:, 0, 0],
+        pk2_batch[:, 1, 1],
+        pk2_batch[:, 2, 2],
+        pk2_batch[:, 0, 1],
+        pk2_batch[:, 0, 2],
+        pk2_batch[:, 1, 2],
+    ])
+
+
 def create_datasets(
     material: Any,
     n_samples: int,
@@ -76,9 +89,14 @@ def create_datasets(
         i2 = Kinematics.isochoric_invariant2(C)
         j = np.sqrt(Kinematics.det_invariant(C))  # J = sqrt(det(C))
         if hasattr(material, "is_anisotropic") and material.is_anisotropic:
-            i4 = Kinematics.fiber_invariant4(C, material.fiber_direction)
-            i5 = Kinematics.fiber_invariant5(C, material.fiber_direction)
-            inputs = np.column_stack([i1, i2, j, i4, i5])
+            num_fibers = getattr(material, "num_fiber_families", 1)
+            if num_fibers > 1:
+                fiber_invs = Kinematics.fiber_invariants_multi(C, material.fiber_directions)
+                inputs = np.column_stack([i1, i2, j, fiber_invs])
+            else:
+                i4 = Kinematics.fiber_invariant4(C, material.fiber_direction)
+                i5 = Kinematics.fiber_invariant5(C, material.fiber_direction)
+                inputs = np.column_stack([i1, i2, j, i4, i5])
         else:
             inputs = np.column_stack([i1, i2, j])
     else:  # cauchy_green
@@ -92,24 +110,16 @@ def create_datasets(
             C[:, 1, 2],
         ])
 
-    # Compute targets
-    pk2_batch = material.evaluate_pk2(C)  # (N, 3, 3)
-    pk2_voigt = np.column_stack([
-        pk2_batch[:, 0, 0],
-        pk2_batch[:, 1, 1],
-        pk2_batch[:, 2, 2],
-        pk2_batch[:, 0, 1],
-        pk2_batch[:, 0, 2],
-        pk2_batch[:, 1, 2],
-    ])
-
     if target_type == "energy":
         energy = material.evaluate_energy(C)  # (N,)
         targets_raw = energy.reshape(-1, 1)
 
         # Stress target must match input dimensionality for EnergyStressLoss.
-        # Invariant inputs (3D) → dW/d(invariants); cauchy_green (6D) → PK2 Voigt.
-        stress_target = material.evaluate_energy_grad_invariants(C) if input_type == "invariants" else pk2_voigt
+        # Invariant inputs (3D+) → dW/d(invariants); cauchy_green (6D) → PK2 Voigt.
+        if input_type == "invariants":
+            stress_target = material.evaluate_energy_grad_invariants(C)
+        else:
+            stress_target = _pk2_voigt(material, C)
 
         in_norm = Normalizer().fit(inputs)
         inputs_normed = in_norm.transform(inputs)
@@ -140,7 +150,7 @@ def create_datasets(
         return train_ds, val_ds, in_norm, energy_norm
 
     elif target_type == "pk2_voigt":
-        targets_raw = pk2_voigt
+        targets_raw = _pk2_voigt(material, C)
     elif target_type == "pk2_voigt+cmat_voigt":
         cmat_batch = material.evaluate_cmat(C)  # (N, 3, 3, 3, 3)
         # Extract 21 unique Voigt components (upper triangle of 6x6)
@@ -154,7 +164,7 @@ def create_datasets(
                     cmat_batch[:, ii1[i], ii2[i], ii1[j], ii2[j]] + cmat_batch[:, ii1[i], ii2[i], ii2[j], ii1[j]]
                 )
                 k += 1
-        targets_raw = np.column_stack([pk2_voigt, cmat_voigt])
+        targets_raw = np.column_stack([_pk2_voigt(material, C), cmat_voigt])
     else:
         msg = f"Unknown target_type: {target_type}"
         raise ValueError(msg)

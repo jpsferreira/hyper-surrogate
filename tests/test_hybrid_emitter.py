@@ -111,22 +111,22 @@ def test_emit_aniso_fiber_invariants():
     exported = _make_scalar_model(input_dim=5)
     code = HybridUMATEmitter(exported).emit()
     # Fiber direction from props
-    assert "a0(1) = props(1)" in code
+    assert "a0_1(1) = props(1)" in code
     # I4, I5 computation
-    assert "I4 = I4 + a0(ii) * Ca0(ii)" in code
-    assert "I5 = I5 + Ca0(ii) * Ca0(ii)" in code
+    assert "I4_1 = I4_1 + a0_1(ii) * Ca0_1(ii)" in code
+    assert "I5_1 = I5_1 + Ca0_1(ii) * Ca0_1(ii)" in code
     # NN input includes fiber invariants
-    assert "nn_input(4) = I4" in code
-    assert "nn_input(5) = I5" in code
+    assert "nn_input(4) = I4_1" in code
+    assert "nn_input(5) = I5_1" in code
 
 
 def test_emit_aniso_fiber_derivatives():
     exported = _make_scalar_model(input_dim=5)
     code = HybridUMATEmitter(exported).emit()
     # dI4/dC = a0 x a0
-    assert "dI4_dC(ii,jj) = a0(ii) * a0(jj)" in code
+    assert "dI4_1_dC(ii,jj) = a0_1(ii) * a0_1(jj)" in code
     # dI5/dC = a0 x Ca0 + Ca0 x a0
-    assert "dI5_dC(ii,jj) = a0(ii) * Ca0(jj) + Ca0(ii) * a0(jj)" in code
+    assert "dI5_1_dC(ii,jj) = a0_1(ii) * Ca0_1(jj) + Ca0_1(ii) * a0_1(jj)" in code
     # PK2 includes fiber terms
     assert "dW_dI(4)" in code
     assert "dW_dI(5)" in code
@@ -141,22 +141,22 @@ def test_emit_aniso_tangent():
     assert "DO mm = 1, 5" in code
     assert "DO nn = 1, 5" in code
     # d²I5/dCdC contribution present
-    assert "d2I5" in code.replace("²", "2").lower() or "a0(ii)*a0(ll)*eye3(jj,kk)" in code
+    assert "a0_1(ii)*a0_1(ll)*eye3(jj,kk)" in code
 
 
 def test_emit_aniso_header():
     exported = _make_scalar_model(input_dim=5)
     code = HybridUMATEmitter(exported).emit()
-    assert "I1_bar, I2_bar, J, I4, I5" in code
-    assert "Fiber direction a0 is read from props(1:3)" in code
+    assert "I1_bar, I2_bar, J, I4_1, I5_1" in code
+    assert "a0_1 from props(1:3)" in code
 
 
 def test_emit_isotropic_no_fiber():
     """Isotropic (in_dim=3) should NOT contain fiber invariant code."""
     exported = _make_scalar_model(input_dim=3)
     code = HybridUMATEmitter(exported).emit()
-    assert "dI4_dC" not in code
-    assert "dI5_dC" not in code
+    assert "dI4_1_dC" not in code
+    assert "dI5_1_dC" not in code
     assert "props(1)" not in code
     assert "nn_input(3)" in code
     assert "dIdC(3, 3, 3)" in code

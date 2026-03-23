@@ -289,116 +289,129 @@ class HybridUMATEmitter:
         return "\n".join(lines)
 
     # ------------------------------------------------------------------
-    # Anisotropic (in_dim=5) Fortran snippets
+    # Anisotropic Fortran snippets (generalized for N fiber families)
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _emit_aniso_declarations() -> str:
+    def _emit_aniso_declarations(num_fibers: int) -> str:
         """Extra local variable declarations for anisotropic UMAT."""
-        return """\
-  ! Fiber invariants (anisotropic)
-  DOUBLE PRECISION :: a0(3), Ca0(3), I4, I5
-  DOUBLE PRECISION :: dI4_dC(3,3), dI5_dC(3,3)
-"""
+        lines = ["  ! Fiber invariants (anisotropic)"]
+        for k in range(num_fibers):
+            lines.append(f"  DOUBLE PRECISION :: a0_{k + 1}(3), Ca0_{k + 1}(3), I4_{k + 1}, I5_{k + 1}")
+            lines.append(f"  DOUBLE PRECISION :: dI4_{k + 1}_dC(3,3), dI5_{k + 1}_dC(3,3)")
+        return "\n".join(lines) + "\n"
 
     @staticmethod
-    def _emit_aniso_invariants() -> str:
-        """Compute fiber invariants I4, I5 from C and a0."""
-        return """
-  ! Fiber direction from material properties
-  a0(1) = props(1)
-  a0(2) = props(2)
-  a0(3) = props(3)
+    def _emit_aniso_invariants(num_fibers: int) -> str:
+        """Compute fiber invariants I4, I5 from C and a0 for each fiber family."""
+        lines: list[str] = []
+        for k in range(num_fibers):
+            prop_start = k * 3 + 1
+            lines.append(f"""
+  ! Fiber family {k + 1}: direction from props({prop_start}:{prop_start + 2})
+  a0_{k + 1}(1) = props({prop_start})
+  a0_{k + 1}(2) = props({prop_start + 1})
+  a0_{k + 1}(3) = props({prop_start + 2})
 
-  ! Ca0 = C * a0
+  ! Ca0_{k + 1} = C * a0_{k + 1}
   DO ii = 1, 3
-    Ca0(ii) = 0.0d0
+    Ca0_{k + 1}(ii) = 0.0d0
     DO jj = 1, 3
-      Ca0(ii) = Ca0(ii) + C(ii,jj) * a0(jj)
+      Ca0_{k + 1}(ii) = Ca0_{k + 1}(ii) + C(ii,jj) * a0_{k + 1}(jj)
     END DO
   END DO
 
-  ! I4 = a0 . C . a0
-  I4 = 0.0d0
+  ! I4_{k + 1} = a0_{k + 1} . C . a0_{k + 1}
+  I4_{k + 1} = 0.0d0
   DO ii = 1, 3
-    I4 = I4 + a0(ii) * Ca0(ii)
+    I4_{k + 1} = I4_{k + 1} + a0_{k + 1}(ii) * Ca0_{k + 1}(ii)
   END DO
 
-  ! I5 = a0 . C^2 . a0 = Ca0 . Ca0
-  I5 = 0.0d0
+  ! I5_{k + 1} = a0_{k + 1} . C^2 . a0_{k + 1} = Ca0_{k + 1} . Ca0_{k + 1}
+  I5_{k + 1} = 0.0d0
   DO ii = 1, 3
-    I5 = I5 + Ca0(ii) * Ca0(ii)
-  END DO
-"""
+    I5_{k + 1} = I5_{k + 1} + Ca0_{k + 1}(ii) * Ca0_{k + 1}(ii)
+  END DO""")
+        return "\n".join(lines)
 
     @staticmethod
-    def _emit_aniso_nn_input() -> str:
+    def _emit_aniso_nn_input(num_fibers: int) -> str:
         """Set fiber invariant entries in nn_input."""
-        return """\
-  nn_input(4) = I4
-  nn_input(5) = I5
-"""
+        lines: list[str] = []
+        for k in range(num_fibers):
+            idx_i4 = 3 + 2 * k + 1  # Fortran 1-indexed
+            idx_i5 = 3 + 2 * k + 2
+            lines.append(f"  nn_input({idx_i4}) = I4_{k + 1}")
+            lines.append(f"  nn_input({idx_i5}) = I5_{k + 1}")
+        return "\n".join(lines) + "\n"
 
     @staticmethod
-    def _emit_aniso_didC() -> str:
-        """Compute dI4/dC and dI5/dC."""
-        return """
-  ! dI4/dC = a0 (x) a0
+    def _emit_aniso_didC(num_fibers: int) -> str:
+        """Compute dI4/dC and dI5/dC for each fiber family."""
+        lines: list[str] = []
+        for k in range(num_fibers):
+            lines.append(f"""
+  ! dI4_{k + 1}/dC = a0_{k + 1} (x) a0_{k + 1}
   DO ii = 1, 3
     DO jj = 1, 3
-      dI4_dC(ii,jj) = a0(ii) * a0(jj)
+      dI4_{k + 1}_dC(ii,jj) = a0_{k + 1}(ii) * a0_{k + 1}(jj)
     END DO
   END DO
 
-  ! dI5/dC = a0 (x) Ca0 + Ca0 (x) a0
+  ! dI5_{k + 1}/dC = a0_{k + 1} (x) Ca0_{k + 1} + Ca0_{k + 1} (x) a0_{k + 1}
   DO ii = 1, 3
     DO jj = 1, 3
-      dI5_dC(ii,jj) = a0(ii) * Ca0(jj) + Ca0(ii) * a0(jj)
+      dI5_{k + 1}_dC(ii,jj) = a0_{k + 1}(ii) * Ca0_{k + 1}(jj) + Ca0_{k + 1}(ii) * a0_{k + 1}(jj)
     END DO
-  END DO
-"""
+  END DO""")
+        return "\n".join(lines)
 
     @staticmethod
-    def _emit_aniso_pk2_terms() -> str:
-        """Additional PK2 terms for I4, I5."""
-        return """ &
-        + dW_dI(4) * dI4_dC(ii,jj) &
-        + dW_dI(5) * dI5_dC(ii,jj)"""
+    def _emit_aniso_pk2_terms(num_fibers: int) -> str:
+        """Additional PK2 terms for fiber invariants."""
+        lines: list[str] = []
+        for k in range(num_fibers):
+            idx_i4 = 3 + 2 * k + 1  # Fortran 1-indexed
+            idx_i5 = 3 + 2 * k + 2
+            lines.append(f" &\n        + dW_dI({idx_i4}) * dI4_{k + 1}_dC(ii,jj)")
+            lines.append(f" &\n        + dW_dI({idx_i5}) * dI5_{k + 1}_dC(ii,jj)")
+        return "".join(lines)
 
     @staticmethod
-    def _emit_aniso_dIdC_pack() -> str:
+    def _emit_aniso_dIdC_pack(num_fibers: int) -> str:
         """Pack fiber dI/dC into dIdC array."""
-        return """\
-    DO ii = 1, 3
-      DO jj = 1, 3
-        dIdC(ii, jj, 4) = dI4_dC(ii, jj)
-        dIdC(ii, jj, 5) = dI5_dC(ii, jj)
-      END DO
-    END DO
-"""
+        lines = ["    DO ii = 1, 3", "      DO jj = 1, 3"]
+        for k in range(num_fibers):
+            idx_i4 = 3 + 2 * k + 1
+            idx_i5 = 3 + 2 * k + 2
+            lines.append(f"        dIdC(ii, jj, {idx_i4}) = dI4_{k + 1}_dC(ii, jj)")
+            lines.append(f"        dIdC(ii, jj, {idx_i5}) = dI5_{k + 1}_dC(ii, jj)")
+        lines.extend(["      END DO", "    END DO"])
+        return "\n".join(lines) + "\n"
 
     @staticmethod
-    def _emit_aniso_d2IdC2() -> str:
+    def _emit_aniso_d2IdC2(num_fibers: int) -> str:
         """Second derivatives d²I4/dCdC=0, d²I5/dCdC for tangent."""
-        return """
-    ! d²I4/dCdC = 0 (dI4/dC = a0 (x) a0 is constant w.r.t. C)
-    ! No contribution needed for I4.
+        lines: list[str] = []
+        for k in range(num_fibers):
+            idx_i5 = 3 + 2 * k + 2  # Fortran 1-indexed
+            lines.append(f"""
+    ! d²I4_{k + 1}/dCdC = 0 (dI4/dC = a0 (x) a0 is constant w.r.t. C)
 
-    ! d²I5/(dC_AB dC_CD) = 0.5*(a0_A*a0_D*delta_BC + a0_A*a0_C*delta_BD
-    !                          + a0_B*a0_D*delta_AC + a0_B*a0_C*delta_AD)
+    ! d²I5_{k + 1}/(dC_AB dC_CD)
     DO ii = 1, 3
       DO jj = 1, 3
         DO kk = 1, 3
           DO ll = 1, 3
             val = 0.5d0 * ( &
-                a0(ii)*a0(ll)*eye3(jj,kk) + a0(ii)*a0(kk)*eye3(jj,ll) &
-              + a0(jj)*a0(ll)*eye3(ii,kk) + a0(jj)*a0(kk)*eye3(ii,ll))
-            dPK2_dC(ii,jj,kk,ll) = dPK2_dC(ii,jj,kk,ll) + 4.0d0 * dW_dI(5) * val
+                a0_{k + 1}(ii)*a0_{k + 1}(ll)*eye3(jj,kk) + a0_{k + 1}(ii)*a0_{k + 1}(kk)*eye3(jj,ll) &
+              + a0_{k + 1}(jj)*a0_{k + 1}(ll)*eye3(ii,kk) + a0_{k + 1}(jj)*a0_{k + 1}(kk)*eye3(ii,ll))
+            dPK2_dC(ii,jj,kk,ll) = dPK2_dC(ii,jj,kk,ll) + 4.0d0 * dW_dI({idx_i5}) * val
           END DO
         END DO
       END DO
-    END DO
-"""
+    END DO""")
+        return "\n".join(lines)
 
     def _emit_poly_nn_forward_and_backward(self) -> str:  # noqa: C901
         """Emit polyconvex ICNN forward/backward with per-branch Hessian."""
@@ -447,7 +460,7 @@ class HybridUMATEmitter:
             b_in = len(indices)
             n_hidden = len(b_layers) - 1
 
-            lines.append(f"! ---- Branch {bi}: inputs [{", ".join(str(i + 1) for i in indices)}] ----")
+            lines.append(f"! ---- Branch {bi}: inputs [{', '.join(str(i + 1) for i in indices)}] ----")
 
             # Slice input
             for si, idx in enumerate(indices):
@@ -612,14 +625,17 @@ class HybridUMATEmitter:
         weights = self.exported.weights
         hidden_dims = [weights[layer.weights].shape[0] for layer in layers]
         in_dim = self.exported.metadata["input_dim"]
-        aniso = in_dim == 5
+        num_fibers = (in_dim - 3) // 2
+        aniso = num_fibers > 0
+        n_inv = in_dim
 
         if aniso:
-            input_desc = "I1_bar, I2_bar, J, I4, I5"
-            n_inv = 5
+            inv_parts = ["I1_bar", "I2_bar", "J"]
+            for k in range(num_fibers):
+                inv_parts.extend([f"I4_{k + 1}", f"I5_{k + 1}"])
+            input_desc = ", ".join(inv_parts)
         else:
             input_desc = "I1_bar, I2_bar, J"
-            n_inv = 3
 
         code = f"""\
 !>********************************************************************
@@ -633,7 +649,7 @@ class HybridUMATEmitter:
 !> Stress and tangent are derived analytically via chain rule.
 !>   Cauchy = (1/J) * F * PK2 * F^T
 !>   Tangent = push-forward of material tangent + Jaumann correction
-{"!> Fiber direction a0 is read from props(1:3)." if aniso else ""}
+{"!> Fiber directions: " + ", ".join(f"a0_{k + 1} from props({k * 3 + 1}:{k * 3 + 3})" for k in range(num_fibers)) if aniso else ""}
 !>********************************************************************
 
 MODULE nn_sef
@@ -694,7 +710,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   DOUBLE PRECISION :: eye3(3,3)
   DOUBLE PRECISION :: Jm23, Jm43
   INTEGER :: ii, jj, kk, ll
-{self._emit_aniso_declarations() if aniso else ""}
+{self._emit_aniso_declarations(num_fibers) if aniso else ""}
   ! d²W/dI² from analytical NN Hessian
   DOUBLE PRECISION :: d2W_dI2({n_inv},{n_inv})
 
@@ -748,14 +764,14 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
 
   I1_bar = trC * Jm23
   I2_bar = 0.5d0 * (trC**2 - trC2) * Jm43
-{self._emit_aniso_invariants() if aniso else ""}
+{self._emit_aniso_invariants(num_fibers) if aniso else ""}
   ! ================================================================
   ! 2. NN evaluation: W({input_desc}) and dW/dI
   ! ================================================================
   nn_input(1) = I1_bar
   nn_input(2) = I2_bar
   nn_input(3) = Jac
-{self._emit_aniso_nn_input() if aniso else ""}  CALL nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
+{self._emit_aniso_nn_input(num_fibers) if aniso else ""}  CALL nn_eval(nn_input, W_nn, dW_dI, d2W_dI2)
 
   ! Store strain energy
   sse = W_nn
@@ -795,7 +811,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       dJ_dC(ii,jj) = 0.5d0 * Jac * invC(ii,jj)
     END DO
   END DO
-{self._emit_aniso_didC() if aniso else ""}
+{self._emit_aniso_didC(num_fibers) if aniso else ""}
   ! ================================================================
   ! 4. PK2 stress: S = 2 * dW/dC = 2 * sum_k (dW/dIk * dIk/dC)
   ! ================================================================
@@ -804,7 +820,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
       PK2(ii,jj) = 2.0d0 * ( &
           dW_dI(1) * dI1_dC(ii,jj) &
         + dW_dI(2) * dI2_dC(ii,jj) &
-        + dW_dI(3) * dJ_dC(ii,jj){self._emit_aniso_pk2_terms() if aniso else ""} )
+        + dW_dI(3) * dJ_dC(ii,jj){self._emit_aniso_pk2_terms(num_fibers) if aniso else ""} )
     END DO
   END DO
 
@@ -847,7 +863,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
         dIdC(ii, jj, 3) = dJ_dC(ii, jj)
       END DO
     END DO
-{self._emit_aniso_dIdC_pack() if aniso else ""}
+{self._emit_aniso_dIdC_pack(num_fibers) if aniso else ""}
     ! C_ABCD += 4 * sum_k sum_l d²W/dIk*dIl * (dIk/dC)_AB * (dIl/dC)_CD
     DO ii = 1, 3
       DO jj = 1, 3
@@ -915,7 +931,7 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
         END DO
       END DO
     END DO
-{self._emit_aniso_d2IdC2() if aniso else ""}
+{self._emit_aniso_d2IdC2(num_fibers) if aniso else ""}
   END BLOCK
 
   ! ================================================================
