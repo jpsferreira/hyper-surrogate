@@ -177,7 +177,7 @@ def test_pk2_superposition(params, c_batch):
     pk2_sum = np.zeros_like(pk2_combined)
     for key, val in params.items():
         if val != 0.0:
-            single_params = {k: 0.0 for k in params}
+            single_params = dict.fromkeys(params, 0.0)
             single_params[key] = val
             pk2_sum += MooneyRivlin(single_params).evaluate_pk2(c_batch)
 
@@ -230,7 +230,7 @@ def test_cmat_superposition(c_batch):
     cmat_sum = np.zeros_like(cmat_combined)
     for key, val in params.items():
         if val != 0.0:
-            single_params = {k: 0.0 for k in params}
+            single_params = dict.fromkeys(params, 0.0)
             single_params[key] = val
             cmat_sum += MooneyRivlin(single_params).evaluate_cmat(c_batch)
 
