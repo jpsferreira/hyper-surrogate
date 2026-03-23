@@ -430,9 +430,8 @@ class Demiray(Material):
         C1 = self._symbols["C1"]
         C2 = self._symbols["C2"]
         KBULK = self._symbols["KBULK"]
-        return (
-            (C1 / C2) * (sympy_exp(C2 * (h.isochoric_invariant1 - 3)) - 1)
-            + Rational(1, 4) * KBULK * (h.invariant3 - 1 - 2 * log(h.invariant3 ** Rational(1, 2)))
+        return (C1 / C2) * (sympy_exp(C2 * (h.isochoric_invariant1 - 3)) - 1) + Rational(1, 4) * KBULK * (
+            h.invariant3 - 1 - 2 * log(h.invariant3 ** Rational(1, 2))
         )
 
     def sef_from_invariants(
@@ -503,7 +502,7 @@ class Ogden(Material):
         # Principal stretches squared = eigenvalues of C
         eigvals = np.linalg.eigvalsh(c_batch)  # (N, 3), sorted ascending
         # Isochoric principal stretches: lambda_bar_i = J^(-1/3) * lambda_i
-        lambda_bar_sq = eigvals * (j_vals**(-2.0 / 3.0))[:, None]
+        lambda_bar_sq = eigvals * (j_vals ** (-2.0 / 3.0))[:, None]
         lambda_bar = np.sqrt(np.maximum(lambda_bar_sq, 1e-30))
 
         W = np.zeros(n_samples)
@@ -594,8 +593,11 @@ class Guccione(Material):
 
     def _rotation_matrix(self) -> np.ndarray:
         """Build rotation from global to fiber (f, s, n) frame."""
-        assert self._fiber_direction is not None  # guaranteed by __init__
-        f0 = self._fiber_direction / np.linalg.norm(self._fiber_direction)
+        fiber_dir = self._fiber_direction
+        if fiber_dir is None:  # pragma: no cover
+            msg = "Guccione requires a fiber direction"
+            raise ValueError(msg)
+        f0 = fiber_dir / np.linalg.norm(fiber_dir)
         s0 = self._sheet_direction / np.linalg.norm(self._sheet_direction)
         n0 = np.cross(f0, s0)
         n0 = n0 / np.linalg.norm(n0)
@@ -625,11 +627,7 @@ class Guccione(Material):
         E_fn = E_local[:, 0, 2]
         E_sn = E_local[:, 1, 2]
 
-        Q_val = (
-            bf_p * E_ff**2
-            + bt_p * (E_ss**2 + E_nn**2 + 2 * E_sn**2)
-            + bfs_p * (2 * E_fs**2 + 2 * E_fn**2)
-        )
+        Q_val = bf_p * E_ff**2 + bt_p * (E_ss**2 + E_nn**2 + 2 * E_sn**2) + bfs_p * (2 * E_fs**2 + 2 * E_fn**2)
 
         W = 0.5 * C_p * (np.exp(Q_val) - 1)
 
@@ -709,9 +707,8 @@ class Fung(Material):
         b1 = self._params["b1"]
         b2 = self._params["b2"]
 
-        Q = (
-            b1 * (E[:, 0, 0] ** 2 + E[:, 1, 1] ** 2 + E[:, 2, 2] ** 2)
-            + b2 * 2 * (E[:, 0, 1] ** 2 + E[:, 0, 2] ** 2 + E[:, 1, 2] ** 2)
+        Q = b1 * (E[:, 0, 0] ** 2 + E[:, 1, 1] ** 2 + E[:, 2, 2] ** 2) + b2 * 2 * (
+            E[:, 0, 1] ** 2 + E[:, 0, 2] ** 2 + E[:, 1, 2] ** 2
         )
 
         W = 0.5 * c_p * (np.exp(Q) - 1)

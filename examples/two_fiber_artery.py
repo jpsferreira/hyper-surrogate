@@ -20,7 +20,7 @@ def main() -> None:
 
     # Typical medial layer parameters (Holzapfel et al., 2005)
     params = {
-        "a": 3.0,      # kPa (ground substance stiffness)
+        "a": 3.0,  # kPa (ground substance stiffness)
         "b": 0.5,
         "af": 2.3632,  # kPa (fiber stiffness)
         "bf": 0.8393,
@@ -34,7 +34,7 @@ def main() -> None:
 
     # Generate equibiaxial stretch in 1-2 plane
     stretches = np.linspace(1.0, 1.3, 10)
-    print(f"{'Stretch':>8s} {'W_fiber1':>12s} {'W_fiber2':>12s} {'W_total':>12s}")
+    print(f"{"Stretch":>8s} {"W_fiber1":>12s} {"W_fiber2":>12s} {"W_total":>12s}")
     print("-" * 50)
 
     for lam in stretches:
@@ -46,10 +46,6 @@ def main() -> None:
         j = np.sqrt(Kinematics.det_invariant(C))
         i4_1 = Kinematics.fiber_invariant4(C, fiber1)
         i4_2 = Kinematics.fiber_invariant4(C, fiber2)
-
-        # Evaluate energy (sum of two fiber contributions + shared isotropic)
-        grad1 = mat1.evaluate_energy_grad_invariants(C)
-        grad2 = mat2.evaluate_energy_grad_invariants(C)
 
         # Total energy needs proper evaluation
         from sympy import Symbol, lambdify

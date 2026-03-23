@@ -56,11 +56,15 @@ def test_alpha2_neohooke_equivalence():
 
 def test_multi_term():
     """Test 2-term Ogden model."""
-    mat = Ogden(parameters={
-        "mu1": 1.0, "alpha1": 2.0,
-        "mu2": 0.5, "alpha2": -2.0,
-        "KBULK": 1000.0,
-    })
+    mat = Ogden(
+        parameters={
+            "mu1": 1.0,
+            "alpha1": 2.0,
+            "mu2": 0.5,
+            "alpha2": -2.0,
+            "KBULK": 1000.0,
+        }
+    )
     assert mat._n_terms == 2
     F = _uniaxial_F(1.1, axis=0)
     C = Kinematics.right_cauchy_green(F)

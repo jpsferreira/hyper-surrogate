@@ -89,10 +89,16 @@ def test_kappa_zero_matches_holzapfel():
 
 def test_kappa_third_isotropic_fiber():
     """kappa=1/3: E_bar = (1/3)(I1_bar-3), no I4 dependence in E_bar."""
-    mat = GasserOgdenHolzapfel(parameters={
-        "a": 0.0, "b": 1.0, "af": 1.0, "bf": 1.0,
-        "kappa": 1.0 / 3.0, "KBULK": 0.0,
-    })
+    mat = GasserOgdenHolzapfel(
+        parameters={
+            "a": 0.0,
+            "b": 1.0,
+            "af": 1.0,
+            "bf": 1.0,
+            "kappa": 1.0 / 3.0,
+            "KBULK": 0.0,
+        }
+    )
     # With kappa=1/3, E_bar = (1/3)(I1_bar-3) regardless of I4
     W_a = float(_evaluate_energy_from_invariants(mat, 3.3, 3.0, 1.0, 1.5, 1.0))
     W_b = float(_evaluate_energy_from_invariants(mat, 3.3, 3.0, 1.0, 0.8, 1.0))

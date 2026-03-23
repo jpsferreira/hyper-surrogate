@@ -6,8 +6,6 @@ to discover which basis functions best describe the material behavior.
 
 from __future__ import annotations
 
-import torch
-
 from hyper_surrogate.data.dataset import create_datasets
 from hyper_surrogate.mechanics.materials import NeoHooke
 from hyper_surrogate.models.cann import CANN
@@ -43,21 +41,21 @@ def main() -> None:
     trainer = Trainer(model, train_ds, val_ds, loss_fn=loss_fn, max_epochs=500)
     result = trainer.fit()
 
-    print(f"\nTraining complete:")
-    print(f"  Final train loss: {result.history['train_loss'][-1]:.6f}")
-    print(f"  Final val loss: {result.history['val_loss'][-1]:.6f}")
+    print("\nTraining complete:")
+    print(f"  Final train loss: {result.history["train_loss"][-1]:.6f}")
+    print(f"  Final val loss: {result.history["val_loss"][-1]:.6f}")
 
     # Discover active terms
     print("\nActive basis functions (weight > 0.01):")
     terms = model.get_active_terms(threshold=0.01)
     for t in terms:
-        inv_name = f"I{t['invariant'] + 1}_bar" if t["invariant"] < 2 else "J"
+        inv_name = f"I{t["invariant"] + 1}_bar" if t["invariant"] < 2 else "J"
         if t["type"] == "polynomial":
-            print(f"  w={t['weight']:.4f}: ({inv_name})^{t['power']}")
+            print(f"  w={t["weight"]:.4f}: ({inv_name})^{t["power"]}")
         elif t["type"] == "exponential":
-            print(f"  w={t['weight']:.4f}: exp({t['stiffness']:.3f} * {inv_name}^2) - 1")
+            print(f"  w={t["weight"]:.4f}: exp({t["stiffness"]:.3f} * {inv_name}^2) - 1")
         elif t["type"] == "logarithmic":
-            print(f"  w={t['weight']:.4f}: log(1 + {inv_name}^2)")
+            print(f"  w={t["weight"]:.4f}: log(1 + {inv_name}^2)")
 
     print(f"\nTotal active terms: {len(terms)} / {model._n_basis}")
     print("Expected: dominant polynomial terms on I1_bar (NeoHooke ~ C10*(I1_bar - 3))")

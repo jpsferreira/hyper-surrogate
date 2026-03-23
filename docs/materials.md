@@ -4,17 +4,17 @@
 
 hyper-surrogate provides a comprehensive library of hyperelastic constitutive models for both isotropic and anisotropic materials.
 
-| Model | Type | Invariants | Parameters | Use Case |
-|-------|------|-----------|------------|----------|
-| `NeoHooke` | Isotropic | $\bar{I}_1$ | 1 | Simple rubber-like materials |
-| `MooneyRivlin` | Isotropic | $\bar{I}_1, \bar{I}_2$ | 2 | Rubber with moderate strains |
-| `Yeoh` | Isotropic | $\bar{I}_1$ | 3 | Rubber at large strains |
-| `Demiray` | Isotropic | $\bar{I}_1$ | 2 | Soft biological tissues |
-| `Ogden` | Isotropic | $\bar{\lambda}_i$ | $2N$ | General rubber (any strain range) |
-| `Fung` | Isotropic | $\mathbf{E}$ | 3 | Soft tissues (exponential stiffening) |
-| `HolzapfelOgden` | Anisotropic | $\bar{I}_1, I_4$ | 4 | Arterial wall (single fiber) |
-| `GasserOgdenHolzapfel` | Anisotropic | $\bar{I}_1, I_4$ | 5 | Arterial wall (dispersed fibers) |
-| `Guccione` | Anisotropic | $\mathbf{E}$ (fiber frame) | 4 | Cardiac tissue |
+| Model                  | Type        | Invariants                 | Parameters | Use Case                              |
+| ---------------------- | ----------- | -------------------------- | ---------- | ------------------------------------- |
+| `NeoHooke`             | Isotropic   | $\bar{I}_1$                | 1          | Simple rubber-like materials          |
+| `MooneyRivlin`         | Isotropic   | $\bar{I}_1, \bar{I}_2$     | 2          | Rubber with moderate strains          |
+| `Yeoh`                 | Isotropic   | $\bar{I}_1$                | 3          | Rubber at large strains               |
+| `Demiray`              | Isotropic   | $\bar{I}_1$                | 2          | Soft biological tissues               |
+| `Ogden`                | Isotropic   | $\bar{\lambda}_i$          | $2N$       | General rubber (any strain range)     |
+| `Fung`                 | Isotropic   | $\mathbf{E}$               | 3          | Soft tissues (exponential stiffening) |
+| `HolzapfelOgden`       | Anisotropic | $\bar{I}_1, I_4$           | 4          | Arterial wall (single fiber)          |
+| `GasserOgdenHolzapfel` | Anisotropic | $\bar{I}_1, I_4$           | 5          | Arterial wall (dispersed fibers)      |
+| `Guccione`             | Anisotropic | $\mathbf{E}$ (fiber frame) | 4          | Cardiac tissue                        |
 
 ## Isotropic Models
 

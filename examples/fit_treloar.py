@@ -26,7 +26,7 @@ def main() -> None:
         initial_guess={"C10": 0.1},
         fixed_params={"KBULK": 1000.0},
     )
-    print(f"NeoHooke: C10={res_nh.parameters['C10']:.4f}, R²={res_nh.r_squared:.4f}")
+    print(f"NeoHooke: C10={res_nh.parameters["C10"]:.4f}, R²={res_nh.r_squared:.4f}")
 
     # Fit MooneyRivlin
     mat_mr, res_mr = fit_material(
@@ -35,7 +35,9 @@ def main() -> None:
         initial_guess={"C10": 0.1, "C01": 0.05},
         fixed_params={"KBULK": 1000.0},
     )
-    print(f"MooneyRivlin: C10={res_mr.parameters['C10']:.4f}, C01={res_mr.parameters['C01']:.4f}, R²={res_mr.r_squared:.4f}")
+    print(
+        f"MooneyRivlin: C10={res_mr.parameters["C10"]:.4f}, C01={res_mr.parameters["C01"]:.4f}, R²={res_mr.r_squared:.4f}"
+    )
 
     # Fit Yeoh
     mat_ye, res_ye = fit_material(
@@ -44,7 +46,9 @@ def main() -> None:
         initial_guess={"C10": 0.1, "C20": 0.001, "C30": 0.0001},
         fixed_params={"KBULK": 1000.0},
     )
-    print(f"Yeoh: C10={res_ye.parameters['C10']:.4f}, C20={res_ye.parameters['C20']:.6f}, C30={res_ye.parameters['C30']:.8f}, R²={res_ye.r_squared:.4f}")
+    print(
+        f"Yeoh: C10={res_ye.parameters["C10"]:.4f}, C20={res_ye.parameters["C20"]:.6f}, C30={res_ye.parameters["C30"]:.8f}, R²={res_ye.r_squared:.4f}"
+    )
 
 
 if __name__ == "__main__":

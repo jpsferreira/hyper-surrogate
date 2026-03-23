@@ -64,9 +64,7 @@ class CANN(SurrogateModel):
             # Initialize with small positive values
             self.raw_exp_params = nn.Parameter(torch.linspace(0.5, 2.0, n_exponential * input_dim))
         else:
-            self.register_buffer(
-                "raw_exp_params", torch.linspace(0.5, 2.0, max(n_exponential * input_dim, 1))
-            )
+            self.register_buffer("raw_exp_params", torch.linspace(0.5, 2.0, max(n_exponential * input_dim, 1)))
 
     @property
     def input_dim(self) -> int:
