@@ -1,5 +1,29 @@
 from hyper_surrogate.mechanics.kinematics import Kinematics
-from hyper_surrogate.mechanics.materials import HolzapfelOgden, Material, MooneyRivlin, NeoHooke
+from hyper_surrogate.mechanics.materials import (
+    Demiray,
+    Fung,
+    GasserOgdenHolzapfel,
+    Guccione,
+    HolzapfelOgden,
+    Material,
+    MooneyRivlin,
+    NeoHooke,
+    Ogden,
+    Yeoh,
+)
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 
-__all__ = ["SymbolicHandler", "Kinematics", "Material", "NeoHooke", "MooneyRivlin", "HolzapfelOgden"]
+__all__ = [
+    "Demiray",
+    "Fung",
+    "GasserOgdenHolzapfel",
+    "Guccione",
+    "HolzapfelOgden",
+    "Kinematics",
+    "Material",
+    "MooneyRivlin",
+    "NeoHooke",
+    "Ogden",
+    "SymbolicHandler",
+    "Yeoh",
+]

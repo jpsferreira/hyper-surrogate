@@ -40,3 +40,25 @@ class EnergyStressLoss(nn.Module):
         dw_di = torch.autograd.grad(w_pred.sum(), inputs, create_graph=True)[0]
         stress_loss = F.mse_loss(dw_di, s_true)
         return self.alpha * energy_loss + self.beta * stress_loss
+
+
+class SparseLoss(nn.Module):
+    """Energy-stress loss with L1 regularization on model weights for CANN model discovery.
+
+    Encourages sparsity in CANN basis function weights, so surviving terms
+    reveal the minimal constitutive law.
+    """
+
+    def __init__(self, base_loss: nn.Module, l1_lambda: float = 0.01, weight_param: str = "raw_weights") -> None:
+        super().__init__()
+        self.base_loss = base_loss
+        self.l1_lambda = l1_lambda
+        self.weight_param = weight_param
+
+    def forward(self, *args: torch.Tensor, model: nn.Module | None = None, **kwargs: torch.Tensor) -> torch.Tensor:
+        loss: torch.Tensor = self.base_loss(*args, **kwargs)
+        if model is not None:
+            for name, param in model.named_parameters():
+                if self.weight_param in name:
+                    loss = loss + self.l1_lambda * torch.abs(param).sum()
+        return loss

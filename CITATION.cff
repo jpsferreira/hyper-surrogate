@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "hyper-surrogate: Data-driven surrogates for hyperelastic constitutive models"
+type: software
+authors:
+  - family-names: Ferreira
+    given-names: Joao
+    email: fj.ferreira@fe.up.pt
+version: "1.0.0"
+date-released: "2026-03-23"
+license: MIT
+repository-code: "https://github.com/jpsferreira/hyper-surrogate"
+url: "https://jpsferreira.github.io/hyper-surrogate/"
+keywords:
+  - hyperelasticity
+  - constitutive modeling
+  - neural network surrogates
+  - finite element analysis
+  - biomechanics
+  - UMAT
+  - input-convex neural networks
+  - continuum mechanics
+abstract: >-
+  A Python library for building, training, and exporting data-driven surrogate
+  models for hyperelastic constitutive laws. Supports a broad library of
+  material models (Neo-Hooke, Mooney-Rivlin, Yeoh, Ogden, Holzapfel-Ogden,
+  Gasser-Ogden-Holzapfel, Guccione, Fung, Demiray), multiple neural network
+  architectures (MLP, ICNN, PolyconvexICNN, CANN), thermodynamically consistent
+  training, and automated export to Fortran 90 UMAT subroutines for use in
+  commercial finite element solvers (Abaqus, LS-DYNA).

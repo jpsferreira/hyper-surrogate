@@ -3,16 +3,33 @@
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 from hyper_surrogate.data.deformation import DeformationGenerator
 from hyper_surrogate.mechanics.kinematics import Kinematics
-from hyper_surrogate.mechanics.materials import HolzapfelOgden, Material, MooneyRivlin, NeoHooke
+from hyper_surrogate.mechanics.materials import (
+    Demiray,
+    Fung,
+    GasserOgdenHolzapfel,
+    Guccione,
+    HolzapfelOgden,
+    Material,
+    MooneyRivlin,
+    NeoHooke,
+    Ogden,
+    Yeoh,
+)
 from hyper_surrogate.mechanics.symbolic import SymbolicHandler
 from hyper_surrogate.reporting.reporter import Reporter
 
 # ML (requires torch)
 try:
+    from hyper_surrogate.models.cann import CANN  # noqa: F401
     from hyper_surrogate.models.icnn import ICNN  # noqa: F401
     from hyper_surrogate.models.mlp import MLP  # noqa: F401
     from hyper_surrogate.models.polyconvex import PolyconvexICNN  # noqa: F401
-    from hyper_surrogate.training.losses import EnergyStressLoss, StressLoss, StressTangentLoss  # noqa: F401
+    from hyper_surrogate.training.losses import (  # noqa: F401
+        EnergyStressLoss,
+        SparseLoss,
+        StressLoss,
+        StressTangentLoss,
+    )
     from hyper_surrogate.training.trainer import Trainer, TrainingResult  # noqa: F401
 except ImportError:
     pass
@@ -26,15 +43,21 @@ except ImportError:
     pass
 
 __all__ = [
-    "SymbolicHandler",
+    "DeformationGenerator",
+    "Demiray",
+    "Fung",
+    "GasserOgdenHolzapfel",
+    "Guccione",
+    "HolzapfelOgden",
     "Kinematics",
     "Material",
-    "NeoHooke",
-    "MooneyRivlin",
-    "HolzapfelOgden",
-    "DeformationGenerator",
     "MaterialDataset",
+    "MooneyRivlin",
+    "NeoHooke",
     "Normalizer",
-    "create_datasets",
+    "Ogden",
     "Reporter",
+    "SymbolicHandler",
+    "Yeoh",
+    "create_datasets",
 ]
