@@ -37,7 +37,7 @@ class FortranEmitter:
         lines = []
         template = self.ACTIVATIONS[activation]
         lines.append(f"  DO i = 1, {size}")
-        lines.append(f"    {var}(i) = {template.format(x=f'{var}(i)')}")
+        lines.append(f"    {var}(i) = {template.format(x=f"{var}(i)")}")
         lines.append("  END DO")
         return lines
 
@@ -284,7 +284,7 @@ class FortranEmitter:
         b_in_dim = len(indices)
         n_hidden = len(branch_layers) - 1
 
-        lines.append(f"    ! === Branch {bi}: inputs [{', '.join(str(i + 1) for i in indices)}] ===")
+        lines.append(f"    ! === Branch {bi}: inputs [{", ".join(str(i + 1) for i in indices)}] ===")
         for si, idx in enumerate(indices):
             lines.append(f"    x_b{bi}({si + 1}) = x_norm({idx + 1})")
         lines.append("")
