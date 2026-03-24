@@ -86,13 +86,13 @@ print(f"\nActive terms: {len(terms)} / {model._n_basis}")
 
 ### 1.5 CANN basis functions reference
 
-| Type | Function $\psi_k(I)$ | Learnable Parameters |
-|------|----------------------|---------------------|
-| Polynomial ($p=1$) | $I$ | None |
-| Polynomial ($p=2$) | $I^2$ | None |
-| Polynomial ($p=3$) | $I^3$ | None |
-| Exponential | $\exp(b \cdot I^2) - 1$ | $b > 0$ |
-| Logarithmic | $\ln(1 + I^2)$ | None |
+| Type               | Function $\psi_k(I)$    | Learnable Parameters |
+| ------------------ | ----------------------- | -------------------- |
+| Polynomial ($p=1$) | $I$                     | None                 |
+| Polynomial ($p=2$) | $I^2$                   | None                 |
+| Polynomial ($p=3$) | $I^3$                   | None                 |
+| Exponential        | $\exp(b \cdot I^2) - 1$ | $b > 0$              |
+| Logarithmic        | $\ln(1 + I^2)$          | None                 |
 
 Each basis function is applied **per invariant**, so with 3 invariants and 6 basis types, there are 18 total terms.
 
@@ -117,11 +117,11 @@ print(f"Stress range: [{data.stress.min():.3f}, {data.stress.max():.3f}] MPa")
 
 The `ExperimentalData` object contains:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `stretch` | `ndarray` | Principal stretch values $\lambda$ |
-| `stress` | `ndarray` | Corresponding engineering stress (MPa) |
-| `test_type` | `str` | Type of test (`"uniaxial"`, `"biaxial"`) |
+| Field       | Type      | Description                              |
+| ----------- | --------- | ---------------------------------------- |
+| `stretch`   | `ndarray` | Principal stretch values $\lambda$       |
+| `stress`    | `ndarray` | Corresponding engineering stress (MPa)   |
+| `test_type` | `str`     | Type of test (`"uniaxial"`, `"biaxial"`) |
 
 ### 2.2 Fitting material parameters
 
@@ -164,11 +164,11 @@ print(f"Yeoh: C10={res_ye.parameters['C10']:.4f}, "
 
 The `fit_material` function returns a `(Material, FitResult)` tuple:
 
-| `FitResult` Field | Description |
-|-------------------|-------------|
-| `parameters` | `Dict[str, float]` — fitted parameter values |
-| `r_squared` | $R^2$ goodness-of-fit (1.0 = perfect) |
-| `residual` | Sum of squared stress residuals |
+| `FitResult` Field | Description                                  |
+| ----------------- | -------------------------------------------- |
+| `parameters`      | `Dict[str, float]` — fitted parameter values |
+| `r_squared`       | $R^2$ goodness-of-fit (1.0 = perfect)        |
+| `residual`        | Sum of squared stress residuals              |
 
 The fitting minimizes:
 
@@ -178,12 +178,12 @@ using `scipy.optimize.minimize`.
 
 ### 2.4 Comparing model fits
 
-| Model | Parameters | Expected $R^2$ (Treloar) |
-|-------|:----------:|:------------------------:|
-| NeoHooke | 1 | ~0.95 (poor at large stretch) |
-| MooneyRivlin | 2 | ~0.97 |
-| Yeoh | 3 | ~0.99+ (captures stiffening) |
-| Ogden (3-term) | 6 | ~0.999 |
+| Model          | Parameters |   Expected $R^2$ (Treloar)    |
+| -------------- | :--------: | :---------------------------: |
+| NeoHooke       |     1      | ~0.95 (poor at large stretch) |
+| MooneyRivlin   |     2      |             ~0.97             |
+| Yeoh           |     3      | ~0.99+ (captures stiffening)  |
+| Ogden (3-term) |     6      |            ~0.999             |
 
 ### 2.5 Using fitted material for surrogate training
 
@@ -249,15 +249,15 @@ for r in results:
 
 Each `BenchmarkResult` contains:
 
-| Metric | Description |
-|--------|-------------|
-| Material name | Which material was tested |
-| Model name | Which architecture was used |
-| $R^2$ | Coefficient of determination on test set |
-| MAE | Mean absolute error |
-| RMSE | Root mean squared error |
-| Training time | Wall-clock time for training |
-| Best epoch | Epoch with best validation loss |
+| Metric        | Description                              |
+| ------------- | ---------------------------------------- |
+| Material name | Which material was tested                |
+| Model name    | Which architecture was used              |
+| $R^2$         | Coefficient of determination on test set |
+| MAE           | Mean absolute error                      |
+| RMSE          | Root mean squared error                  |
+| Training time | Wall-clock time for training             |
+| Best epoch    | Epoch with best validation loss          |
 
 ### 3.3 Example output
 
@@ -353,13 +353,13 @@ reporter.generate_report("report_from_F/")
 
 ### 4.6 What to look for in diagnostic reports
 
-| Check | What It Tells You |
-|-------|-------------------|
-| $\bar{I}_1$ near 3 | Deformations are moderate (good for most materials) |
-| $J$ spread | Volumetric perturbation range (should match your material's compressibility) |
-| $\lambda_1 / \lambda_3$ ratio | Maximum stretch anisotropy |
-| Bimodal $\lambda$ distribution | Mix of tension and compression modes |
-| Uniform $J$ histogram | Even volumetric sampling |
+| Check                          | What It Tells You                                                            |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| $\bar{I}_1$ near 3             | Deformations are moderate (good for most materials)                          |
+| $J$ spread                     | Volumetric perturbation range (should match your material's compressibility) |
+| $\lambda_1 / \lambda_3$ ratio  | Maximum stretch anisotropy                                                   |
+| Bimodal $\lambda$ distribution | Mix of tension and compression modes                                         |
+| Uniform $J$ histogram          | Even volumetric sampling                                                     |
 
 ---
 

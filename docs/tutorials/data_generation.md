@@ -77,12 +77,12 @@ This is the **recommended mode for training data**: it covers a wide range of de
 
 ### Summary of Deformation Modes
 
-| Mode | Function | Key Parameters | Volume-Preserving |
-|------|----------|---------------|:-----------------:|
-| Uniaxial | `gen.uniaxial()` | `stretch_range` | Yes |
-| Biaxial | `gen.biaxial()` | `stretch_range` | Yes |
-| Shear | `gen.shear()` | `shear_range` | Yes |
-| Combined | `gen.combined()` | `stretch_range`, `shear_range` | Yes |
+| Mode     | Function         | Key Parameters                 | Volume-Preserving |
+| -------- | ---------------- | ------------------------------ | :---------------: |
+| Uniaxial | `gen.uniaxial()` | `stretch_range`                |        Yes        |
+| Biaxial  | `gen.biaxial()`  | `stretch_range`                |        Yes        |
+| Shear    | `gen.shear()`    | `shear_range`                  |        Yes        |
+| Combined | `gen.combined()` | `stretch_range`, `shear_range` |        Yes        |
 
 ---
 
@@ -139,13 +139,13 @@ inputs_aniso = np.column_stack([i1_bar, i2_bar, j, i4, i5])  # (N, 5)
 
 ### Invariant ranges (typical)
 
-| Invariant | Reference Value ($\mathbf{F} = \mathbf{I}$) | Typical Training Range |
-|-----------|:-------------------------------------------:|:---------------------:|
-| $\bar{I}_1$ | 3.0 | 2.5 -- 4.0 |
-| $\bar{I}_2$ | 3.0 | 2.5 -- 4.5 |
-| $J$ | 1.0 | 0.9 -- 1.1 |
-| $I_4$ | 1.0 | 0.5 -- 2.0 |
-| $I_5$ | 1.0 | 0.3 -- 4.0 |
+| Invariant   | Reference Value ($\mathbf{F} = \mathbf{I}$) | Typical Training Range |
+| ----------- | :-----------------------------------------: | :--------------------: |
+| $\bar{I}_1$ |                     3.0                     |       2.5 -- 4.0       |
+| $\bar{I}_2$ |                     3.0                     |       2.5 -- 4.5       |
+| $J$         |                     1.0                     |       0.9 -- 1.1       |
+| $I_4$       |                     1.0                     |       0.5 -- 2.0       |
+| $I_5$       |                     1.0                     |       0.3 -- 4.0       |
 
 ---
 
@@ -173,12 +173,12 @@ cmat = material.evaluate_cmat(C)  # (N, 3, 3, 3, 3)
 
 ### Target types summary
 
-| Target Type | Shape | Use Case |
-|------------|-------|----------|
-| `energy` | `(N,)` | Energy-based training (ICNN, hybrid UMAT) |
-| `dW_dI` | `(N, n_inv)` | Stress gradient (for `EnergyStressLoss`) |
-| PK2 stress | `(N, 3, 3)` | Direct stress prediction |
-| Material tangent | `(N, 3, 3, 3, 3)` | Stress + tangent prediction |
+| Target Type      | Shape             | Use Case                                  |
+| ---------------- | ----------------- | ----------------------------------------- |
+| `energy`         | `(N,)`            | Energy-based training (ICNN, hybrid UMAT) |
+| `dW_dI`          | `(N, n_inv)`      | Stress gradient (for `EnergyStressLoss`)  |
+| PK2 stress       | `(N, 3, 3)`       | Direct stress prediction                  |
+| Material tangent | `(N, 3, 3, 3, 3)` | Stress + tangent prediction               |
 
 ---
 
@@ -207,28 +207,28 @@ print(f"Target shape: {train_ds.targets.shape}")   # (N_train, 6) for pk2_voigt
 
 ### Parameter reference
 
-| Parameter | Options | Default | Description |
-|-----------|---------|---------|-------------|
-| `n_samples` | int | — | Total number of deformation samples |
-| `input_type` | `"invariants"`, `"cauchy_green"` | `"invariants"` | NN input representation |
-| `target_type` | `"energy"`, `"pk2_voigt"`, `"pk2_voigt+cmat_voigt"` | `"pk2_voigt"` | What the NN predicts |
-| `seed` | int | `None` | Random seed for reproducibility |
+| Parameter     | Options                                             | Default        | Description                         |
+| ------------- | --------------------------------------------------- | -------------- | ----------------------------------- |
+| `n_samples`   | int                                                 | —              | Total number of deformation samples |
+| `input_type`  | `"invariants"`, `"cauchy_green"`                    | `"invariants"` | NN input representation             |
+| `target_type` | `"energy"`, `"pk2_voigt"`, `"pk2_voigt+cmat_voigt"` | `"pk2_voigt"`  | What the NN predicts                |
+| `seed`        | int                                                 | `None`         | Random seed for reproducibility     |
 
 ### Input types
 
-| `input_type` | Dimensions | Components |
-|-------------|:----------:|-----------|
-| `"invariants"` (isotropic) | 3 | $\bar{I}_1, \bar{I}_2, J$ |
-| `"invariants"` (anisotropic) | 5 | $\bar{I}_1, \bar{I}_2, J, I_4, I_5$ |
-| `"cauchy_green"` | 6 | $C_{11}, C_{22}, C_{33}, C_{12}, C_{13}, C_{23}$ (Voigt) |
+| `input_type`                 | Dimensions | Components                                               |
+| ---------------------------- | :--------: | -------------------------------------------------------- |
+| `"invariants"` (isotropic)   |     3      | $\bar{I}_1, \bar{I}_2, J$                                |
+| `"invariants"` (anisotropic) |     5      | $\bar{I}_1, \bar{I}_2, J, I_4, I_5$                      |
+| `"cauchy_green"`             |     6      | $C_{11}, C_{22}, C_{33}, C_{12}, C_{13}, C_{23}$ (Voigt) |
 
 ### Target types
 
-| `target_type` | Dimensions | Components |
-|--------------|:----------:|-----------|
-| `"energy"` | 1 | $W$ (+ gradient $\partial W/\partial I$ as auxiliary) |
-| `"pk2_voigt"` | 6 | $S_{11}, S_{22}, S_{33}, S_{12}, S_{13}, S_{23}$ |
-| `"pk2_voigt+cmat_voigt"` | 27 | 6 stress + 21 unique tangent components |
+| `target_type`            | Dimensions | Components                                            |
+| ------------------------ | :--------: | ----------------------------------------------------- |
+| `"energy"`               |     1      | $W$ (+ gradient $\partial W/\partial I$ as auxiliary) |
+| `"pk2_voigt"`            |     6      | $S_{11}, S_{22}, S_{33}, S_{12}, S_{13}, S_{23}$      |
+| `"pk2_voigt+cmat_voigt"` |     27     | 6 stress + 21 unique tangent components               |
 
 ---
 

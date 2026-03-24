@@ -6,11 +6,11 @@ This tutorial covers the three Fortran export pathways in **hyper-surrogate**: s
 
 ## Overview: Three Export Paths
 
-| Export Path | Class | What It Generates | NN Required? |
-|------------|-------|-------------------|:------------:|
-| **Standalone NN** | `FortranEmitter` | Fortran 90 module with NN forward pass | Yes |
-| **Hybrid UMAT** | `HybridUMATEmitter` | Complete Abaqus UMAT (NN energy + analytical stress/tangent) | Yes |
-| **Analytical UMAT** | `UMATHandler` | Complete Abaqus UMAT from symbolic material (SymPy CSE) | No |
+| Export Path         | Class               | What It Generates                                            | NN Required? |
+| ------------------- | ------------------- | ------------------------------------------------------------ | :----------: |
+| **Standalone NN**   | `FortranEmitter`    | Fortran 90 module with NN forward pass                       |     Yes      |
+| **Hybrid UMAT**     | `HybridUMATEmitter` | Complete Abaqus UMAT (NN energy + analytical stress/tangent) |     Yes      |
+| **Analytical UMAT** | `UMATHandler`       | Complete Abaqus UMAT from symbolic material (SymPy CSE)      |      No      |
 
 ```
               ┌─────────────────┐
@@ -47,13 +47,13 @@ exported = hs.ExportedModel.load("my_model.npz")
 
 ### What's inside `ExportedModel`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `layers` | `List[LayerInfo]` | Layer metadata (activation, dimensions) |
-| `weights` | `Dict[str, ndarray]` | Weight matrices and bias vectors |
-| `input_normalizer` | `Dict` | Input mean/std for standardization |
-| `output_normalizer` | `Dict` | Output mean/std for de-standardization |
-| `metadata` | `Dict` | Architecture type, input/output dims, branch info |
+| Field               | Type                 | Description                                       |
+| ------------------- | -------------------- | ------------------------------------------------- |
+| `layers`            | `List[LayerInfo]`    | Layer metadata (activation, dimensions)           |
+| `weights`           | `Dict[str, ndarray]` | Weight matrices and bias vectors                  |
+| `input_normalizer`  | `Dict`               | Input mean/std for standardization                |
+| `output_normalizer` | `Dict`               | Output mean/std for de-standardization            |
+| `metadata`          | `Dict`               | Architecture type, input/output dims, branch info |
 
 ---
 
@@ -144,13 +144,13 @@ hs.FortranEmitter(exported).write("polyconvex_energy.f90")
 
 ### Key properties of generated Fortran
 
-| Property | Details |
-|----------|---------|
-| **Precision** | 15-digit double precision (`:.15e` format) |
-| **Array layout** | Column-major (native Fortran ordering) |
-| **Forward pass** | `MATMUL`-based (efficient on modern compilers) |
-| **Dependencies** | None — fully self-contained |
-| **Activations** | `TANH`, `softplus` ($\ln(1 + e^x)$), ReLU, sigmoid |
+| Property         | Details                                            |
+| ---------------- | -------------------------------------------------- |
+| **Precision**    | 15-digit double precision (`:.15e` format)         |
+| **Array layout** | Column-major (native Fortran ordering)             |
+| **Forward pass** | `MATMUL`-based (efficient on modern compilers)     |
+| **Dependencies** | None — fully self-contained                        |
+| **Activations**  | `TANH`, `softplus` ($\ln(1 + e^x)$), ReLU, sigmoid |
 
 ---
 
@@ -260,16 +260,16 @@ emitter.write("hybrid_umat_polyconvex.f90")
 
 ### 3.5 What the hybrid UMAT contains
 
-| Section | Description |
-|---------|-------------|
-| **Properties block** | Material parameters from `PROPS` array |
-| **Kinematics** | $\mathbf{F} \to \mathbf{C} \to \bar{I}_1, \bar{I}_2, J$ (+ $I_4, I_5$ for anisotropic) |
-| **NN Forward pass** | Normalized input → hidden layers → $W$ (energy scalar) |
-| **NN Backward pass** | Backpropagation: $\partial W / \partial I_\alpha$ |
-| **Jacobian propagation** | Forward-mode AD: $\partial^2 W / \partial I_\alpha \partial I_\beta$ (Hessian) |
-| **PK2 stress** | $\mathbf{S} = 2 \sum_\alpha (\partial W / \partial I_\alpha)(\partial I_\alpha / \partial \mathbf{C})$ |
-| **Cauchy push-forward** | $\boldsymbol{\sigma} = (1/J)\,\mathbf{F}\,\mathbf{S}\,\mathbf{F}^T$ |
-| **Spatial tangent** | Full 4th-order tensor push-forward + Jaumann rate correction |
+| Section                  | Description                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| **Properties block**     | Material parameters from `PROPS` array                                                                 |
+| **Kinematics**           | $\mathbf{F} \to \mathbf{C} \to \bar{I}_1, \bar{I}_2, J$ (+ $I_4, I_5$ for anisotropic)                 |
+| **NN Forward pass**      | Normalized input → hidden layers → $W$ (energy scalar)                                                 |
+| **NN Backward pass**     | Backpropagation: $\partial W / \partial I_\alpha$                                                      |
+| **Jacobian propagation** | Forward-mode AD: $\partial^2 W / \partial I_\alpha \partial I_\beta$ (Hessian)                         |
+| **PK2 stress**           | $\mathbf{S} = 2 \sum_\alpha (\partial W / \partial I_\alpha)(\partial I_\alpha / \partial \mathbf{C})$ |
+| **Cauchy push-forward**  | $\boldsymbol{\sigma} = (1/J)\,\mathbf{F}\,\mathbf{S}\,\mathbf{F}^T$                                    |
+| **Spatial tangent**      | Full 4th-order tensor push-forward + Jaumann rate correction                                           |
 
 ---
 
@@ -304,13 +304,13 @@ Material (symbolic SEF)
 
 ### Features
 
-| Feature | Details |
-|---------|---------|
-| **Exact derivatives** | Symbolic differentiation (no numerical errors) |
-| **CSE optimization** | SymPy identifies and eliminates repeated subexpressions |
-| **Cauchy stress** | Push-forward from PK2 to Cauchy |
-| **Spatial tangent** | Full tangent with Jaumann rate correction |
-| **Compatible** | Works with any symbolic `Material` in the library |
+| Feature               | Details                                                 |
+| --------------------- | ------------------------------------------------------- |
+| **Exact derivatives** | Symbolic differentiation (no numerical errors)          |
+| **CSE optimization**  | SymPy identifies and eliminates repeated subexpressions |
+| **Cauchy stress**     | Push-forward from PK2 to Cauchy                         |
+| **Spatial tangent**   | Full tangent with Jaumann rate correction               |
+| **Compatible**        | Works with any symbolic `Material` in the library       |
 
 ### Works with any material
 
@@ -334,14 +334,14 @@ UMATHandler(mat).generate("demiray_umat.f")
 
 ## 5. Choosing an Export Path
 
-| Question | Answer → Export Path |
-|----------|---------------------|
-| Do you need a NN surrogate? | **No** → `UMATHandler` (analytical) |
-| Do you need stress + tangent for FE? | **Yes** → `HybridUMATEmitter` |
-| Do you only need the NN forward pass? | **Yes** → `FortranEmitter` (standalone) |
-| Is the material energy-based (scalar NN)? | **Yes** → `HybridUMATEmitter` |
-| Is the material stress-based (6D NN)? | → `FortranEmitter` + custom UMAT wrapper |
-| Is thermodynamic consistency critical? | **Yes** → `HybridUMATEmitter` with ICNN/PolyconvexICNN |
+| Question                                  | Answer → Export Path                                   |
+| ----------------------------------------- | ------------------------------------------------------ |
+| Do you need a NN surrogate?               | **No** → `UMATHandler` (analytical)                    |
+| Do you need stress + tangent for FE?      | **Yes** → `HybridUMATEmitter`                          |
+| Do you only need the NN forward pass?     | **Yes** → `FortranEmitter` (standalone)                |
+| Is the material energy-based (scalar NN)? | **Yes** → `HybridUMATEmitter`                          |
+| Is the material stress-based (6D NN)?     | → `FortranEmitter` + custom UMAT wrapper               |
+| Is thermodynamic consistency critical?    | **Yes** → `HybridUMATEmitter` with ICNN/PolyconvexICNN |
 
 ### Decision flowchart
 

@@ -16,11 +16,11 @@ The Jacobian determinant $J = \det(\mathbf{F}) > 0$ measures volume change. For 
 
 ### 1.2 Strain Tensors
 
-| Tensor | Symbol | Definition | Configuration |
-|--------|--------|------------|---------------|
-| Right Cauchy-Green | $\mathbf{C}$ | $\mathbf{F}^T \mathbf{F}$ | Reference (Lagrangian) |
-| Left Cauchy-Green | $\mathbf{b}$ | $\mathbf{F}\, \mathbf{F}^T$ | Current (Eulerian) |
-| Green-Lagrange strain | $\mathbf{E}$ | $\frac{1}{2}(\mathbf{C} - \mathbf{I})$ | Reference |
+| Tensor                | Symbol       | Definition                             | Configuration          |
+| --------------------- | ------------ | -------------------------------------- | ---------------------- |
+| Right Cauchy-Green    | $\mathbf{C}$ | $\mathbf{F}^T \mathbf{F}$              | Reference (Lagrangian) |
+| Left Cauchy-Green     | $\mathbf{b}$ | $\mathbf{F}\, \mathbf{F}^T$            | Current (Eulerian)     |
+| Green-Lagrange strain | $\mathbf{E}$ | $\frac{1}{2}(\mathbf{C} - \mathbf{I})$ | Reference              |
 
 In `hyper-surrogate`, all constitutive evaluations are based on $\mathbf{C}$:
 
@@ -51,11 +51,11 @@ $$\mathbf{F} = J^{1/3}\, \bar{\mathbf{F}}, \qquad \bar{\mathbf{C}} = J^{-2/3}\, 
 
 The **isochoric (modified) invariants** are:
 
-| Invariant | Expression | Physical Meaning |
-|-----------|------------|-----------------|
-| $\bar{I}_1$ | $J^{-2/3}\, I_1$ | Isochoric shape change (trace) |
+| Invariant   | Expression       | Physical Meaning                  |
+| ----------- | ---------------- | --------------------------------- |
+| $\bar{I}_1$ | $J^{-2/3}\, I_1$ | Isochoric shape change (trace)    |
 | $\bar{I}_2$ | $J^{-4/3}\, I_2$ | Isochoric shape change (cofactor) |
-| $J$ | $\sqrt{I_3}$ | Volume ratio |
+| $J$         | $\sqrt{I_3}$     | Volume ratio                      |
 
 ```python
 I1_bar = hs.Kinematics.isochoric_invariant1(C)  # (N,)
@@ -122,13 +122,13 @@ $$c_{ijkl} = \frac{1}{J} F_{iI} F_{jJ} F_{kK} F_{lL}\, \mathbb{C}_{IJKL} + \text
 For FE implementation, symmetric tensors and tangent matrices are stored in Voigt notation:
 
 | Voigt Index | Tensor Components |
-|:-----------:|:-----------------:|
-| 1 | 11 (xx) |
-| 2 | 22 (yy) |
-| 3 | 33 (zz) |
-| 4 | 12 (xy) |
-| 5 | 13 (xz) |
-| 6 | 23 (yz) |
+| :---------: | :---------------: |
+|      1      |      11 (xx)      |
+|      2      |      22 (yy)      |
+|      3      |      33 (zz)      |
+|      4      |      12 (xy)      |
+|      5      |      13 (xz)      |
+|      6      |      23 (yz)      |
 
 - **Stress**: $\mathbf{S} \to [S_{11}, S_{22}, S_{33}, S_{12}, S_{13}, S_{23}]$ (6 components)
 - **Tangent**: $\mathbb{C} \to 6 \times 6$ matrix
@@ -153,12 +153,12 @@ All models share the same volumetric term:
 
 $$U(J) = \frac{K}{4}\left(J^2 - 1 - 2\ln J\right)$$
 
-| Property | Value |
-|----------|-------|
-| $U(1) = 0$ | Zero energy at $J=1$ |
-| $U'(1) = 0$ | Zero pressure at $J=1$ |
-| $U''(1) = K$ | Bulk modulus at $J=1$ |
-| $U(J) \to \infty$ as $J \to 0^+$ or $J \to \infty$ | Penalty barrier |
+| Property                                           | Value                  |
+| -------------------------------------------------- | ---------------------- |
+| $U(1) = 0$                                         | Zero energy at $J=1$   |
+| $U'(1) = 0$                                        | Zero pressure at $J=1$ |
+| $U''(1) = K$                                       | Bulk modulus at $J=1$  |
+| $U(J) \to \infty$ as $J \to 0^+$ or $J \to \infty$ | Penalty barrier        |
 
 The parameter $K$ (bulk modulus, `KBULK` in code) controls the degree of near-incompressibility. Typical values: $K = 100$--$10000 \times$ shear modulus.
 
@@ -172,10 +172,10 @@ The simplest invariant-based hyperelastic model:
 
 $$W = C_{10}(\bar{I}_1 - 3) + U(J)$$
 
-| Parameter | Symbol | Meaning | Typical Range |
-|-----------|--------|---------|---------------|
-| `C10` | $C_{10}$ | Half the initial shear modulus ($\mu/2$) | 0.1 -- 10 MPa |
-| `KBULK` | $K$ | Bulk modulus | 100 -- 10000 MPa |
+| Parameter | Symbol   | Meaning                                  | Typical Range    |
+| --------- | -------- | ---------------------------------------- | ---------------- |
+| `C10`     | $C_{10}$ | Half the initial shear modulus ($\mu/2$) | 0.1 -- 10 MPa    |
+| `KBULK`   | $K$      | Bulk modulus                             | 100 -- 10000 MPa |
 
 **Stress derivatives**:
 
@@ -194,11 +194,11 @@ Extends Neo-Hooke with dependence on the second invariant:
 
 $$W = C_{10}(\bar{I}_1 - 3) + C_{01}(\bar{I}_2 - 3) + U(J)$$
 
-| Parameter | Symbol | Meaning |
-|-----------|--------|---------|
-| `C10` | $C_{10}$ | First invariant coefficient |
-| `C01` | $C_{01}$ | Second invariant coefficient |
-| `KBULK` | $K$ | Bulk modulus |
+| Parameter | Symbol   | Meaning                      |
+| --------- | -------- | ---------------------------- |
+| `C10`     | $C_{10}$ | First invariant coefficient  |
+| `C01`     | $C_{01}$ | Second invariant coefficient |
+| `KBULK`   | $K$      | Bulk modulus                 |
 
 The initial shear modulus is $\mu = 2(C_{10} + C_{01})$.
 
@@ -215,11 +215,11 @@ Third-order polynomial in $(\bar{I}_1 - 3)$:
 
 $$W = C_{10}(\bar{I}_1 - 3) + C_{20}(\bar{I}_1 - 3)^2 + C_{30}(\bar{I}_1 - 3)^3 + U(J)$$
 
-| Parameter | Symbol | Role |
-|-----------|--------|------|
-| `C10` | $C_{10}$ | Linear (small-strain) response |
-| `C20` | $C_{20}$ | Softening at moderate strains (often $< 0$) |
-| `C30` | $C_{30}$ | Stiffening at large strains (often $> 0$) |
+| Parameter | Symbol   | Role                                        |
+| --------- | -------- | ------------------------------------------- |
+| `C10`     | $C_{10}$ | Linear (small-strain) response              |
+| `C20`     | $C_{20}$ | Softening at moderate strains (often $< 0$) |
+| `C30`     | $C_{30}$ | Stiffening at large strains (often $> 0$)   |
 
 **Use case**: Rubber undergoing large deformations with strain-stiffening. The S-shaped stress-strain curve of filled rubbers is well captured.
 
@@ -234,10 +234,10 @@ Exponential model for soft biological tissues:
 
 $$W = \frac{C_1}{C_2}\left[\exp\!\left(C_2(\bar{I}_1 - 3)\right) - 1\right] + U(J)$$
 
-| Parameter | Symbol | Role |
-|-----------|--------|------|
-| `C1` | $C_1$ | Ground-state stiffness |
-| `C2` | $C_2$ | Exponential stiffening rate |
+| Parameter | Symbol | Role                        |
+| --------- | ------ | --------------------------- |
+| `C1`      | $C_1$  | Ground-state stiffness      |
+| `C2`      | $C_2$  | Exponential stiffening rate |
 
 At small strains ($\bar{I}_1 \approx 3$), the Taylor expansion gives $W \approx C_1(\bar{I}_1 - 3)$, recovering a Neo-Hooke response.
 
@@ -256,8 +256,8 @@ $$W = \sum_{p=1}^{N} \frac{\mu_p}{\alpha_p}\left(\bar{\lambda}_1^{\alpha_p} + \b
 
 where $\bar{\lambda}_i = J^{-1/3} \lambda_i$ are the isochoric principal stretches.
 
-| Parameters | Constraint |
-|-----------|-----------|
+| Parameters              | Constraint                                                      |
+| ----------------------- | --------------------------------------------------------------- |
 | $\mu_p, \alpha_p$ pairs | $\sum_p \mu_p \alpha_p = 2\mu$ (consistency with shear modulus) |
 
 Special cases:
@@ -285,11 +285,11 @@ $$W = \frac{c}{2}\left[\exp(Q) - 1\right] + U(J)$$
 
 $$Q = b_1 E_{11}^2 + b_2(E_{22}^2 + E_{33}^2 + 2E_{12}^2)$$
 
-| Parameter | Symbol | Role |
-|-----------|--------|------|
-| `c` | $c$ | Overall stiffness scaling |
-| `b1` | $b_1$ | Axial (fiber direction) stiffening |
-| `b2` | $b_2$ | Transverse stiffening |
+| Parameter | Symbol | Role                               |
+| --------- | ------ | ---------------------------------- |
+| `c`       | $c$    | Overall stiffness scaling          |
+| `b1`      | $b_1$  | Axial (fiber direction) stiffening |
+| `b2`      | $b_2$  | Transverse stiffening              |
 
 **Use case**: Arterial tissue, especially when the exponential stiffening is important in multiple directions.
 
@@ -310,13 +310,13 @@ $$W = \underbrace{\frac{a}{2b}\left[\exp\!\left(b(\bar{I}_1 - 3)\right) - 1\righ
 
 The **Macaulay bracket** $\langle \cdot \rangle = \max(0, \cdot)$ ensures fibers only contribute under **tension** ($I_4 > 1$, i.e. the fiber is stretched).
 
-| Parameter | Symbol | Meaning |
-|-----------|--------|---------|
-| `a` | $a$ | Ground substance stiffness (kPa) |
-| `b` | $b$ | Ground substance exponential coefficient |
-| `af` | $a_f$ | Fiber stiffness (kPa) |
-| `bf` | $b_f$ | Fiber exponential coefficient |
-| `KBULK` | $K$ | Bulk modulus |
+| Parameter | Symbol | Meaning                                  |
+| --------- | ------ | ---------------------------------------- |
+| `a`       | $a$    | Ground substance stiffness (kPa)         |
+| `b`       | $b$    | Ground substance exponential coefficient |
+| `af`      | $a_f$  | Fiber stiffness (kPa)                    |
+| `bf`      | $b_f$  | Fiber exponential coefficient            |
+| `KBULK`   | $K$    | Bulk modulus                             |
 
 ```python
 from hyper_surrogate import HolzapfelOgden
@@ -336,15 +336,15 @@ where the **generalized strain invariant** accounts for dispersion:
 
 $$\bar{E} = \kappa(\bar{I}_1 - 3) + (1 - 3\kappa)(I_4 - 1)$$
 
-| $\kappa$ Value | Physical Meaning |
-|:-------------:|------------------|
-| $0$ | Perfectly aligned fibers (reduces to Holzapfel-Ogden) |
-| $1/3$ | Isotropically dispersed (no preferred direction) |
-| $0 < \kappa < 1/3$ | Partially dispersed (realistic arterial tissue) |
+|   $\kappa$ Value   | Physical Meaning                                      |
+| :----------------: | ----------------------------------------------------- |
+|        $0$         | Perfectly aligned fibers (reduces to Holzapfel-Ogden) |
+|       $1/3$        | Isotropically dispersed (no preferred direction)      |
+| $0 < \kappa < 1/3$ | Partially dispersed (realistic arterial tissue)       |
 
-| Parameter | Symbol | Meaning |
-|-----------|--------|---------|
-| `kappa` | $\kappa$ | Fiber dispersion ($0 \le \kappa \le 1/3$) |
+| Parameter | Symbol   | Meaning                                   |
+| --------- | -------- | ----------------------------------------- |
+| `kappa`   | $\kappa$ | Fiber dispersion ($0 \le \kappa \le 1/3$) |
 
 Typical values for human arteries: $\kappa \approx 0.1$--$0.3$.
 
@@ -367,12 +367,12 @@ $$Q = b_f E_{ff}^2 + b_t(E_{ss}^2 + E_{nn}^2 + 2E_{sn}^2) + b_{fs}(2E_{fs}^2 + 2
 
 where $E_{ff}, E_{ss}, E_{nn}, E_{fs}, E_{fn}, E_{sn}$ are the Green-Lagrange strain components in the local fiber ($f$), sheet ($s$), and normal ($n$) frame.
 
-| Parameter | Symbol | Role |
-|-----------|--------|------|
-| `C` | $C$ | Overall stiffness |
-| `bf` | $b_f$ | Fiber direction stiffening |
-| `bt` | $b_t$ | Transverse (sheet/normal) stiffening |
-| `bfs` | $b_{fs}$ | Fiber-sheet shear stiffening |
+| Parameter | Symbol   | Role                                 |
+| --------- | -------- | ------------------------------------ |
+| `C`       | $C$      | Overall stiffness                    |
+| `bf`      | $b_f$    | Fiber direction stiffening           |
+| `bt`      | $b_t$    | Transverse (sheet/normal) stiffening |
+| `bfs`     | $b_{fs}$ | Fiber-sheet shear stiffening         |
 
 This model requires **two** direction vectors: `fiber_direction` and `sheet_direction`. The normal direction is computed as $\mathbf{n}_0 = \mathbf{f}_0 \times \mathbf{s}_0$.
 
@@ -389,16 +389,16 @@ mat = Guccione(
 
 ## 6. Summary: Model Selection Guide
 
-| Tissue / Application | Recommended Model | Why |
-|----------------------|-------------------|-----|
-| Simple rubber (small strain) | Neo-Hooke | 1 parameter, sufficient for $< 50\%$ strain |
-| Rubber (moderate strain) | Mooney-Rivlin | 2 parameters, captures $I_2$-dependence |
-| Rubber (large strain, stiffening) | Yeoh or Ogden | Captures S-shaped stress-strain |
-| Isotropic soft tissue | Demiray | Exponential stiffening, 2 parameters |
-| Arterial wall (single fiber family) | Holzapfel-Ogden | Fiber tension-only via Macaulay bracket |
-| Arterial wall (dispersed fibers) | GOH | Adds realistic fiber dispersion |
-| Cardiac tissue | Guccione | Fiber-sheet-normal anisotropy |
-| General isotropic (data-driven fit) | Ogden ($N$-term) | Very flexible, stretch-based |
+| Tissue / Application                | Recommended Model | Why                                         |
+| ----------------------------------- | ----------------- | ------------------------------------------- |
+| Simple rubber (small strain)        | Neo-Hooke         | 1 parameter, sufficient for $< 50\%$ strain |
+| Rubber (moderate strain)            | Mooney-Rivlin     | 2 parameters, captures $I_2$-dependence     |
+| Rubber (large strain, stiffening)   | Yeoh or Ogden     | Captures S-shaped stress-strain             |
+| Isotropic soft tissue               | Demiray           | Exponential stiffening, 2 parameters        |
+| Arterial wall (single fiber family) | Holzapfel-Ogden   | Fiber tension-only via Macaulay bracket     |
+| Arterial wall (dispersed fibers)    | GOH               | Adds realistic fiber dispersion             |
+| Cardiac tissue                      | Guccione          | Fiber-sheet-normal anisotropy               |
+| General isotropic (data-driven fit) | Ogden ($N$-term)  | Very flexible, stretch-based                |
 
 ---
 
@@ -410,13 +410,13 @@ $$\mathbf{S} = 2\frac{\partial W}{\partial \mathbf{C}} = 2\sum_{\alpha} \frac{\p
 
 The invariant derivatives with respect to $\mathbf{C}$ are:
 
-| $I_\alpha$ | $\displaystyle\frac{\partial I_\alpha}{\partial \mathbf{C}}$ |
-|:----------:|:-----------------------------------------------------------:|
-| $I_1$ | $\mathbf{I}$ |
-| $I_2$ | $I_1\,\mathbf{I} - \mathbf{C}$ |
-| $I_3$ | $I_3\,\mathbf{C}^{-1}$ |
-| $I_4$ | $\mathbf{a}_0 \otimes \mathbf{a}_0$ |
-| $I_5$ | $\mathbf{a}_0 \otimes (\mathbf{C}\,\mathbf{a}_0) + (\mathbf{C}\,\mathbf{a}_0) \otimes \mathbf{a}_0$ |
+| $I_\alpha$ |                    $\displaystyle\frac{\partial I_\alpha}{\partial \mathbf{C}}$                     |
+| :--------: | :-------------------------------------------------------------------------------------------------: |
+|   $I_1$    |                                            $\mathbf{I}$                                             |
+|   $I_2$    |                                   $I_1\,\mathbf{I} - \mathbf{C}$                                    |
+|   $I_3$    |                                       $I_3\,\mathbf{C}^{-1}$                                        |
+|   $I_4$    |                                 $\mathbf{a}_0 \otimes \mathbf{a}_0$                                 |
+|   $I_5$    | $\mathbf{a}_0 \otimes (\mathbf{C}\,\mathbf{a}_0) + (\mathbf{C}\,\mathbf{a}_0) \otimes \mathbf{a}_0$ |
 
 This is the fundamental relationship exploited in the **hybrid UMAT**: the neural network learns $W(I_\alpha)$ and its gradient $\partial W / \partial I_\alpha$, while the invariant-to-stress mapping uses the analytical expressions above.
 
@@ -467,10 +467,10 @@ This approach:
 
 ## 10. References
 
-1. **Holzapfel, G.A.** (2000). *Nonlinear Solid Mechanics: A Continuum Approach for Engineering*. Wiley.
-2. **Holzapfel, G.A., Gasser, T.C., Ogden, R.W.** (2000). A new constitutive framework for arterial wall mechanics and a comparative study of material models. *J. Elasticity*, 61, 1--48.
-3. **Gasser, T.C., Ogden, R.W., Holzapfel, G.A.** (2006). Hyperelastic modelling of arterial layers with distributed collagen fibre orientations. *J. R. Soc. Interface*, 3, 15--35.
-4. **Guccione, J.M., McCulloch, A.D., Waldman, L.K.** (1991). Passive material properties of intact ventricular myocardium determined from a cylindrical model. *J. Biomech. Eng.*, 113, 42--55.
-5. **Treloar, L.R.G.** (1944). Stress-strain data for vulcanised rubber under various types of deformation. *Trans. Faraday Soc.*, 40, 59--70.
-6. **Amos, B., Xu, L., Kolter, J.Z.** (2017). Input convex neural networks. *ICML*.
-7. **Linka, K., et al.** (2023). A new family of Constitutive Artificial Neural Networks towards automated model discovery. *CMAME*, 403, 115731.
+1. **Holzapfel, G.A.** (2000). _Nonlinear Solid Mechanics: A Continuum Approach for Engineering_. Wiley.
+2. **Holzapfel, G.A., Gasser, T.C., Ogden, R.W.** (2000). A new constitutive framework for arterial wall mechanics and a comparative study of material models. _J. Elasticity_, 61, 1--48.
+3. **Gasser, T.C., Ogden, R.W., Holzapfel, G.A.** (2006). Hyperelastic modelling of arterial layers with distributed collagen fibre orientations. _J. R. Soc. Interface_, 3, 15--35.
+4. **Guccione, J.M., McCulloch, A.D., Waldman, L.K.** (1991). Passive material properties of intact ventricular myocardium determined from a cylindrical model. _J. Biomech. Eng._, 113, 42--55.
+5. **Treloar, L.R.G.** (1944). Stress-strain data for vulcanised rubber under various types of deformation. _Trans. Faraday Soc._, 40, 59--70.
+6. **Amos, B., Xu, L., Kolter, J.Z.** (2017). Input convex neural networks. _ICML_.
+7. **Linka, K., et al.** (2023). A new family of Constitutive Artificial Neural Networks towards automated model discovery. _CMAME_, 403, 115731.

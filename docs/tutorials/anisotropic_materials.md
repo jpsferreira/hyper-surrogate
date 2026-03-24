@@ -8,10 +8,10 @@ This tutorial covers modeling fiber-reinforced biological tissues — from singl
 
 Anisotropic hyperelastic materials have a **preferred direction** (fiber) that makes the mechanical response direction-dependent. In `hyper-surrogate`, anisotropy is introduced via fiber (pseudo-)invariants:
 
-| Invariant | Expression | Physical Meaning |
-|-----------|-----------|-----------------|
-| $I_4$ | $\mathbf{a}_0 \cdot \mathbf{C}\, \mathbf{a}_0$ | Squared fiber stretch ($\lambda_f^2$) |
-| $I_5$ | $\mathbf{a}_0 \cdot \mathbf{C}^2\, \mathbf{a}_0$ | Fiber-shear coupling |
+| Invariant | Expression                                       | Physical Meaning                      |
+| --------- | ------------------------------------------------ | ------------------------------------- |
+| $I_4$     | $\mathbf{a}_0 \cdot \mathbf{C}\, \mathbf{a}_0$   | Squared fiber stretch ($\lambda_f^2$) |
+| $I_5$     | $\mathbf{a}_0 \cdot \mathbf{C}^2\, \mathbf{a}_0$ | Fiber-shear coupling                  |
 
 The NN input becomes **5-dimensional**: $[\bar{I}_1, \bar{I}_2, J, I_4, I_5]$ instead of 3D for isotropic materials.
 
@@ -152,12 +152,12 @@ The Gasser-Ogden-Holzapfel model adds a **dispersion parameter** $\kappa$ that b
 
 $$\bar{E} = \kappa(\bar{I}_1 - 3) + (1 - 3\kappa)(I_4 - 1)$$
 
-| $\kappa$ | Interpretation |
-|:--------:|----------------|
-| $0$ | Perfectly aligned (= Holzapfel-Ogden) |
-| $0.1$ | Slightly dispersed |
-| $0.226$ | Moderate dispersion (typical arterial media) |
-| $1/3$ | Fully isotropic (no preferred direction) |
+| $\kappa$ | Interpretation                               |
+| :------: | -------------------------------------------- |
+|   $0$    | Perfectly aligned (= Holzapfel-Ogden)        |
+|  $0.1$   | Slightly dispersed                           |
+| $0.226$  | Moderate dispersion (typical arterial media) |
+|  $1/3$   | Fully isotropic (no preferred direction)     |
 
 ```python
 from hyper_surrogate.mechanics.materials import GasserOgdenHolzapfel
@@ -259,12 +259,12 @@ for lam in stretches:
 
 ### 3.4 Important notes for multi-fiber models
 
-| Aspect | Guideline |
-|--------|-----------|
-| **Double-counting** | The isotropic + volumetric parts must only be counted once |
-| **Symmetry** | For symmetric fiber families, $W_{\text{fiber,1}}(\theta) = W_{\text{fiber,2}}(-\theta)$ under symmetric loading |
-| **Macaulay bracket** | Fibers only contribute under tension ($I_4 > 1$) |
-| **NN approach** | Train separate NNs per fiber family, or one NN with all fiber invariants as inputs |
+| Aspect               | Guideline                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Double-counting**  | The isotropic + volumetric parts must only be counted once                                                       |
+| **Symmetry**         | For symmetric fiber families, $W_{\text{fiber,1}}(\theta) = W_{\text{fiber,2}}(-\theta)$ under symmetric loading |
+| **Macaulay bracket** | Fibers only contribute under tension ($I_4 > 1$)                                                                 |
+| **NN approach**      | Train separate NNs per fiber family, or one NN with all fiber invariants as inputs                               |
 
 ---
 
@@ -310,11 +310,11 @@ print(f"PK2 S33 (normal): {pk2[0, 2, 2]:.6f}")
 
 ### Physical interpretation of Guccione parameters
 
-| Parameter | Large value means... |
-|-----------|---------------------|
-| $b_f$ | Stiffer in fiber direction |
-| $b_t$ | Stiffer transversely (sheet & normal) |
-| $b_{fs}$ | Stiffer in fiber-sheet shear |
+| Parameter | Large value means...                  |
+| --------- | ------------------------------------- |
+| $b_f$     | Stiffer in fiber direction            |
+| $b_t$     | Stiffer transversely (sheet & normal) |
+| $b_{fs}$  | Stiffer in fiber-sheet shear          |
 
 Typical hierarchy: $b_f > b_t > b_{fs}$ (myocardium is stiffest along fibers).
 
@@ -364,17 +364,17 @@ fibers = gen.fiber_directions(
 
 ## 6. Summary: Anisotropic Model Comparison
 
-| Model | Fiber Families | Directions Needed | Key Feature | Application |
-|-------|:--------------:|:-----------------:|-------------|-------------|
-| **HolzapfelOgden** | 1 | `fiber_direction` | Macaulay bracket (tension-only) | Arterial media |
-| **GOH** | 1 | `fiber_direction` | Dispersion parameter $\kappa$ | Arterial adventitia |
-| **Guccione** | 1 | `fiber_direction` + `sheet_direction` | Fiber-sheet-normal frame | Myocardium |
-| **Two-fiber** | 2 | Two `fiber_direction`s | Combined energy (avoid double-counting) | Full arterial wall |
+| Model              | Fiber Families |           Directions Needed           | Key Feature                             | Application         |
+| ------------------ | :------------: | :-----------------------------------: | --------------------------------------- | ------------------- |
+| **HolzapfelOgden** |       1        |           `fiber_direction`           | Macaulay bracket (tension-only)         | Arterial media      |
+| **GOH**            |       1        |           `fiber_direction`           | Dispersion parameter $\kappa$           | Arterial adventitia |
+| **Guccione**       |       1        | `fiber_direction` + `sheet_direction` | Fiber-sheet-normal frame                | Myocardium          |
+| **Two-fiber**      |       2        |        Two `fiber_direction`s         | Combined energy (avoid double-counting) | Full arterial wall  |
 
 ### NN input dimensions
 
-| Model Type | Input Dim | Components |
-|-----------|:---------:|-----------|
-| Isotropic | 3 | $\bar{I}_1, \bar{I}_2, J$ |
-| Single fiber | 5 | $\bar{I}_1, \bar{I}_2, J, I_4, I_5$ |
-| Two fibers | 7 | $\bar{I}_1, \bar{I}_2, J, I_4^{(1)}, I_5^{(1)}, I_4^{(2)}, I_5^{(2)}$ |
+| Model Type   | Input Dim | Components                                                            |
+| ------------ | :-------: | --------------------------------------------------------------------- |
+| Isotropic    |     3     | $\bar{I}_1, \bar{I}_2, J$                                             |
+| Single fiber |     5     | $\bar{I}_1, \bar{I}_2, J, I_4, I_5$                                   |
+| Two fibers   |     7     | $\bar{I}_1, \bar{I}_2, J, I_4^{(1)}, I_5^{(1)}, I_4^{(2)}, I_5^{(2)}$ |

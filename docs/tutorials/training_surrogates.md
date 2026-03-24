@@ -18,12 +18,12 @@ Dataset (X, Y)  ──>  Model (MLP / ICNN / PolyconvexICNN / CANN)  ──>  Tr
 
 ### Architecture comparison
 
-| Architecture | Output | Convexity | Physics Guarantee | Input Dim | Output Dim |
-|-------------|--------|:---------:|:-----------------:|:---------:|:----------:|
-| **MLP** | Stress or Energy | None | None | Any | Any |
-| **ICNN** | Energy (scalar) | Convex in inputs | Thermodynamic consistency | Any | 1 |
-| **PolyconvexICNN** | Energy (scalar) | Polyconvex | Stronger thermodynamic guarantee | Any | 1 |
-| **CANN** | Energy (scalar) | Optional | Interpretable + sparse | Any | 1 |
+| Architecture       | Output           |    Convexity     |        Physics Guarantee         | Input Dim | Output Dim |
+| ------------------ | ---------------- | :--------------: | :------------------------------: | :-------: | :--------: |
+| **MLP**            | Stress or Energy |       None       |               None               |    Any    |    Any     |
+| **ICNN**           | Energy (scalar)  | Convex in inputs |    Thermodynamic consistency     |    Any    |     1      |
+| **PolyconvexICNN** | Energy (scalar)  |    Polyconvex    | Stronger thermodynamic guarantee |    Any    |     1      |
+| **CANN**           | Energy (scalar)  |     Optional     |      Interpretable + sparse      |    Any    |     1      |
 
 ### 1.1 MLP (Multi-Layer Perceptron)
 
@@ -48,12 +48,12 @@ Input (3) ──> [Linear 64] ──> tanh ──> [Linear 64] ──> tanh ─�
 
 **Available activations:**
 
-| Activation | Function | Best For |
-|-----------|----------|----------|
-| `"relu"` | $\max(0, x)$ | General use, fast |
-| `"tanh"` | $\tanh(x)$ | Stress prediction (bounded outputs) |
-| `"sigmoid"` | $1/(1 + e^{-x})$ | Bounded [0,1] outputs |
-| `"softplus"` | $\ln(1 + e^x)$ | Energy prediction (smooth, positive) |
+| Activation   | Function         | Best For                             |
+| ------------ | ---------------- | ------------------------------------ |
+| `"relu"`     | $\max(0, x)$     | General use, fast                    |
+| `"tanh"`     | $\tanh(x)$       | Stress prediction (bounded outputs)  |
+| `"sigmoid"`  | $1/(1 + e^{-x})$ | Bounded [0,1] outputs                |
+| `"softplus"` | $\ln(1 + e^x)$   | Energy prediction (smooth, positive) |
 
 **When to use MLP:**
 
@@ -148,11 +148,11 @@ $$W = \sum_{k} \text{softplus}(w_k) \cdot \psi_k(I_\alpha)$$
 
 where $\psi_k$ are basis functions applied per invariant:
 
-| Type | Basis Function $\psi_k$ | Parameters |
-|------|------------------------|------------|
-| Polynomial | $(I_\alpha)^p,\quad p = 1, \ldots, n$ | None (fixed powers) |
-| Exponential | $\exp(b_k I_\alpha^2) - 1$ | Learnable $b_k > 0$ |
-| Logarithmic | $\ln(1 + I_\alpha^2)$ | None |
+| Type        | Basis Function $\psi_k$               | Parameters          |
+| ----------- | ------------------------------------- | ------------------- |
+| Polynomial  | $(I_\alpha)^p,\quad p = 1, \ldots, n$ | None (fixed powers) |
+| Exponential | $\exp(b_k I_\alpha^2) - 1$            | Learnable $b_k > 0$ |
+| Logarithmic | $\ln(1 + I_\alpha^2)$                 | None                |
 
 **Use case:** Model discovery — after training with L1 regularization (`SparseLoss`), inspect which terms survived to identify the minimal constitutive law.
 
@@ -184,10 +184,10 @@ The gradient term is computed via **PyTorch autograd** through the network — t
 loss_fn = hs.EnergyStressLoss(alpha=1.0, beta=1.0)
 ```
 
-| Parameter | Default | Effect |
-|-----------|:-------:|--------|
-| `alpha` | 1.0 | Weight on energy MSE |
-| `beta` | 1.0 | Weight on gradient (stress) MSE |
+| Parameter | Default | Effect                          |
+| --------- | :-----: | ------------------------------- |
+| `alpha`   |   1.0   | Weight on energy MSE            |
+| `beta`    |   1.0   | Weight on gradient (stress) MSE |
 
 **Use with:** ICNN, PolyconvexICNN, MLP (output_dim=1), CANN (`target_type="energy"`).
 
@@ -223,12 +223,12 @@ loss_fn = SparseLoss(alpha=1.0, beta=1.0, l1_lambda=0.01)
 
 ### Loss function decision table
 
-| Scenario | Loss Function | Target Type | Model Output |
-|----------|--------------|-------------|:------------:|
-| Direct stress prediction | `StressLoss` | `pk2_voigt` | 6D |
-| Stress + tangent | `StressTangentLoss` | `pk2_voigt+cmat_voigt` | 27D |
-| Energy-based (thermodynamic) | `EnergyStressLoss` | `energy` | 1D |
-| Model discovery (sparse) | `SparseLoss` | `energy` | 1D |
+| Scenario                     | Loss Function       | Target Type            | Model Output |
+| ---------------------------- | ------------------- | ---------------------- | :----------: |
+| Direct stress prediction     | `StressLoss`        | `pk2_voigt`            |      6D      |
+| Stress + tangent             | `StressTangentLoss` | `pk2_voigt+cmat_voigt` |     27D      |
+| Energy-based (thermodynamic) | `EnergyStressLoss`  | `energy`               |      1D      |
+| Model discovery (sparse)     | `SparseLoss`        | `energy`               |      1D      |
 
 ---
 
@@ -252,26 +252,26 @@ result = hs.Trainer(
 
 ### Trainer parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|:-------:|-------------|
-| `model` | `SurrogateModel` | — | Network to train |
-| `train_ds` | `MaterialDataset` | — | Training dataset |
-| `val_ds` | `MaterialDataset` | — | Validation dataset |
-| `loss_fn` | Loss | `StressLoss()` | Loss function |
-| `max_epochs` | int | 1000 | Maximum training epochs |
-| `lr` | float | 1e-3 | Initial learning rate (Adam optimizer) |
-| `patience` | int | 100 | Early stopping patience |
-| `batch_size` | int | 256 | Mini-batch size |
-| `device` | str | `"cpu"` | Device (`"cpu"` or `"cuda"`) |
+| Parameter    | Type              |    Default     | Description                            |
+| ------------ | ----------------- | :------------: | -------------------------------------- |
+| `model`      | `SurrogateModel`  |       —        | Network to train                       |
+| `train_ds`   | `MaterialDataset` |       —        | Training dataset                       |
+| `val_ds`     | `MaterialDataset` |       —        | Validation dataset                     |
+| `loss_fn`    | Loss              | `StressLoss()` | Loss function                          |
+| `max_epochs` | int               |      1000      | Maximum training epochs                |
+| `lr`         | float             |      1e-3      | Initial learning rate (Adam optimizer) |
+| `patience`   | int               |      100       | Early stopping patience                |
+| `batch_size` | int               |      256       | Mini-batch size                        |
+| `device`     | str               |    `"cpu"`     | Device (`"cpu"` or `"cuda"`)           |
 
 ### Training features
 
-| Feature | How It Works |
-|---------|-------------|
-| **Early stopping** | Monitors val_loss; stops after `patience` epochs without improvement |
-| **LR scheduling** | `ReduceLROnPlateau`: halves LR when val_loss plateaus |
-| **Best checkpoint** | Saves best model state; restores it after training completes |
-| **Autograd detection** | Automatically enables gradient computation for `EnergyStressLoss` |
+| Feature                | How It Works                                                         |
+| ---------------------- | -------------------------------------------------------------------- |
+| **Early stopping**     | Monitors val_loss; stops after `patience` epochs without improvement |
+| **LR scheduling**      | `ReduceLROnPlateau`: halves LR when val_loss plateaus                |
+| **Best checkpoint**    | Saves best model state; restores it after training completes         |
+| **Autograd detection** | Automatically enables gradient computation for `EnergyStressLoss`    |
 
 ### TrainingResult
 
@@ -497,14 +497,14 @@ for i, name in enumerate(["dW/dI1_bar", "dW/dI2_bar", "dW/dJ"]):
 
 ### Recommended starting configurations
 
-| Scenario | Architecture | Hidden Dims | Activation | Loss | Epochs | LR | Patience |
-|----------|-------------|:-----------:|:----------:|------|:------:|:---:|:--------:|
-| Quick prototype | MLP | `[32, 32]` | `tanh` | `StressLoss` | 500 | 1e-3 | 50 |
-| Production stress | MLP | `[64, 64, 64]` | `tanh` | `StressLoss` | 2000 | 1e-3 | 200 |
-| Convex energy | ICNN | `[32, 32]` | `softplus` | `EnergyStressLoss` | 1000 | 1e-3 | 100 |
-| Polyconvex energy | PolyconvexICNN | `[32, 32]` | `softplus` | `EnergyStressLoss` | 2000 | 1e-3 | 200 |
-| Hybrid UMAT | MLP (out=1) | `[64, 64, 64]` | `softplus` | `EnergyStressLoss` | 3000 | 1e-3 | 300 |
-| Model discovery | CANN | — | — | `SparseLoss` | 500 | 1e-3 | 50 |
+| Scenario          | Architecture   |  Hidden Dims   | Activation | Loss               | Epochs |  LR  | Patience |
+| ----------------- | -------------- | :------------: | :--------: | ------------------ | :----: | :--: | :------: |
+| Quick prototype   | MLP            |   `[32, 32]`   |   `tanh`   | `StressLoss`       |  500   | 1e-3 |    50    |
+| Production stress | MLP            | `[64, 64, 64]` |   `tanh`   | `StressLoss`       |  2000  | 1e-3 |   200    |
+| Convex energy     | ICNN           |   `[32, 32]`   | `softplus` | `EnergyStressLoss` |  1000  | 1e-3 |   100    |
+| Polyconvex energy | PolyconvexICNN |   `[32, 32]`   | `softplus` | `EnergyStressLoss` |  2000  | 1e-3 |   200    |
+| Hybrid UMAT       | MLP (out=1)    | `[64, 64, 64]` | `softplus` | `EnergyStressLoss` |  3000  | 1e-3 |   300    |
+| Model discovery   | CANN           |       —        |     —      | `SparseLoss`       |  500   | 1e-3 |    50    |
 
 ### Tips
 

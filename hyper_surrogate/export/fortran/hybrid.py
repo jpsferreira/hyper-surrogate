@@ -460,7 +460,7 @@ class HybridUMATEmitter:
             b_in = len(indices)
             n_hidden = len(b_layers) - 1
 
-            lines.append(f"! ---- Branch {bi}: inputs [{', '.join(str(i + 1) for i in indices)}] ----")
+            lines.append(f"! ---- Branch {bi}: inputs [{", ".join(str(i + 1) for i in indices)}] ----")
 
             # Slice input
             for si, idx in enumerate(indices):

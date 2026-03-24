@@ -44,13 +44,13 @@ print(hs.__version__)
 
 ### Dependency overview
 
-| Component | Required Packages | Install Command |
-|-----------|------------------|-----------------|
-| Core (mechanics, data) | `numpy`, `sympy` | `uv sync` |
-| ML (models, training) | `torch` | `uv sync --extra ml` |
-| Visualization | `matplotlib` | Included in core |
-| Parameter fitting | `scipy` | Included in core |
-| Documentation | `mkdocs-material`, `mkdocstrings` | `uv sync --all-groups` |
+| Component              | Required Packages                 | Install Command        |
+| ---------------------- | --------------------------------- | ---------------------- |
+| Core (mechanics, data) | `numpy`, `sympy`                  | `uv sync`              |
+| ML (models, training)  | `torch`                           | `uv sync --extra ml`   |
+| Visualization          | `matplotlib`                      | Included in core       |
+| Parameter fitting      | `scipy`                           | Included in core       |
+| Documentation          | `mkdocs-material`, `mkdocstrings` | `uv sync --all-groups` |
 
 ---
 
@@ -160,17 +160,17 @@ I5 = hs.Kinematics.fiber_invariant5(C, a0)  # (500,)
 
 **Quick reference table:**
 
-| Method | Input | Output Shape | Description |
-|--------|-------|-------------|-------------|
-| `right_cauchy_green(F)` | `(N,3,3)` | `(N,3,3)` | $\mathbf{C} = \mathbf{F}^T\mathbf{F}$ |
-| `left_cauchy_green(F)` | `(N,3,3)` | `(N,3,3)` | $\mathbf{b} = \mathbf{F}\mathbf{F}^T$ |
-| `jacobian(F)` | `(N,3,3)` | `(N,)` | $J = \det(\mathbf{F})$ |
-| `isochoric_invariant1(C)` | `(N,3,3)` | `(N,)` | $\bar{I}_1 = J^{-2/3} \text{tr}(\mathbf{C})$ |
-| `isochoric_invariant2(C)` | `(N,3,3)` | `(N,)` | $\bar{I}_2 = J^{-4/3} I_2$ |
-| `det_invariant(C)` | `(N,3,3)` | `(N,)` | $I_3 = \det(\mathbf{C}) = J^2$ |
-| `principal_stretches(C)` | `(N,3,3)` | `(N,3)` | $\lambda_1 \ge \lambda_2 \ge \lambda_3$ |
-| `fiber_invariant4(C, a0)` | `(N,3,3)` | `(N,)` | $I_4 = \mathbf{a}_0 \cdot \mathbf{C}\mathbf{a}_0$ |
-| `fiber_invariant5(C, a0)` | `(N,3,3)` | `(N,)` | $I_5 = \mathbf{a}_0 \cdot \mathbf{C}^2\mathbf{a}_0$ |
+| Method                    | Input     | Output Shape | Description                                         |
+| ------------------------- | --------- | ------------ | --------------------------------------------------- |
+| `right_cauchy_green(F)`   | `(N,3,3)` | `(N,3,3)`    | $\mathbf{C} = \mathbf{F}^T\mathbf{F}$               |
+| `left_cauchy_green(F)`    | `(N,3,3)` | `(N,3,3)`    | $\mathbf{b} = \mathbf{F}\mathbf{F}^T$               |
+| `jacobian(F)`             | `(N,3,3)` | `(N,)`       | $J = \det(\mathbf{F})$                              |
+| `isochoric_invariant1(C)` | `(N,3,3)` | `(N,)`       | $\bar{I}_1 = J^{-2/3} \text{tr}(\mathbf{C})$        |
+| `isochoric_invariant2(C)` | `(N,3,3)` | `(N,)`       | $\bar{I}_2 = J^{-4/3} I_2$                          |
+| `det_invariant(C)`        | `(N,3,3)` | `(N,)`       | $I_3 = \det(\mathbf{C}) = J^2$                      |
+| `principal_stretches(C)`  | `(N,3,3)` | `(N,3)`      | $\lambda_1 \ge \lambda_2 \ge \lambda_3$             |
+| `fiber_invariant4(C, a0)` | `(N,3,3)` | `(N,)`       | $I_4 = \mathbf{a}_0 \cdot \mathbf{C}\mathbf{a}_0$   |
+| `fiber_invariant5(C, a0)` | `(N,3,3)` | `(N,)`       | $I_5 = \mathbf{a}_0 \cdot \mathbf{C}^2\mathbf{a}_0$ |
 
 ---
 
@@ -178,17 +178,17 @@ I5 = hs.Kinematics.fiber_invariant5(C, a0)  # (500,)
 
 Here is every model you can instantiate:
 
-| Model | Import | Invariants | Parameters |
-|-------|--------|-----------|------------|
-| `NeoHooke` | `hs.NeoHooke` | $\bar{I}_1$ | `C10, KBULK` |
-| `MooneyRivlin` | `hs.MooneyRivlin` | $\bar{I}_1, \bar{I}_2$ | `C10, C01, KBULK` |
-| `Yeoh` | `from ...materials import Yeoh` | $\bar{I}_1$ | `C10, C20, C30, KBULK` |
-| `Demiray` | `from ...materials import Demiray` | $\bar{I}_1$ | `C1, C2, KBULK` |
-| `Ogden` | `from ...materials import Ogden` | $\bar{\lambda}_i$ | `mu_p, alpha_p, KBULK` |
-| `Fung` | `from ...materials import Fung` | $\mathbf{E}$ | `c, b1, b2, KBULK` |
-| `HolzapfelOgden` | `hs.HolzapfelOgden` | $\bar{I}_1, I_4$ | `a, b, af, bf, KBULK` |
-| `GasserOgdenHolzapfel` | `from ...materials import GOH` | $\bar{I}_1, I_4$ | `a, b, af, bf, kappa, KBULK` |
-| `Guccione` | `from ...materials import Guccione` | $\mathbf{E}$ (fiber frame) | `C, bf, bt, bfs, KBULK` |
+| Model                  | Import                              | Invariants                 | Parameters                   |
+| ---------------------- | ----------------------------------- | -------------------------- | ---------------------------- |
+| `NeoHooke`             | `hs.NeoHooke`                       | $\bar{I}_1$                | `C10, KBULK`                 |
+| `MooneyRivlin`         | `hs.MooneyRivlin`                   | $\bar{I}_1, \bar{I}_2$     | `C10, C01, KBULK`            |
+| `Yeoh`                 | `from ...materials import Yeoh`     | $\bar{I}_1$                | `C10, C20, C30, KBULK`       |
+| `Demiray`              | `from ...materials import Demiray`  | $\bar{I}_1$                | `C1, C2, KBULK`              |
+| `Ogden`                | `from ...materials import Ogden`    | $\bar{\lambda}_i$          | `mu_p, alpha_p, KBULK`       |
+| `Fung`                 | `from ...materials import Fung`     | $\mathbf{E}$               | `c, b1, b2, KBULK`           |
+| `HolzapfelOgden`       | `hs.HolzapfelOgden`                 | $\bar{I}_1, I_4$           | `a, b, af, bf, KBULK`        |
+| `GasserOgdenHolzapfel` | `from ...materials import GOH`      | $\bar{I}_1, I_4$           | `a, b, af, bf, kappa, KBULK` |
+| `Guccione`             | `from ...materials import Guccione` | $\mathbf{E}$ (fiber frame) | `C, bf, bt, bfs, KBULK`      |
 
 ---
 
@@ -203,13 +203,13 @@ Here is every model you can instantiate:
 
 Each stage is covered in detail in the following tutorials:
 
-| Tutorial | What You'll Learn |
-|----------|-------------------|
-| [Data Generation](data_generation.md) | Deformation modes, invariants, datasets |
-| [Training Surrogates](training_surrogates.md) | MLP, ICNN, PolyconvexICNN, loss functions |
-| [Fortran Export](export_fortran.md) | Standalone NN, hybrid UMAT, analytical UMAT |
-| [Anisotropic Materials](anisotropic_materials.md) | Fibers, arterial walls, cardiac tissue |
-| [Advanced Topics](advanced_topics.md) | CANN discovery, parameter fitting, benchmarking |
+| Tutorial                                          | What You'll Learn                               |
+| ------------------------------------------------- | ----------------------------------------------- |
+| [Data Generation](data_generation.md)             | Deformation modes, invariants, datasets         |
+| [Training Surrogates](training_surrogates.md)     | MLP, ICNN, PolyconvexICNN, loss functions       |
+| [Fortran Export](export_fortran.md)               | Standalone NN, hybrid UMAT, analytical UMAT     |
+| [Anisotropic Materials](anisotropic_materials.md) | Fibers, arterial walls, cardiac tissue          |
+| [Advanced Topics](advanced_topics.md)             | CANN discovery, parameter fitting, benchmarking |
 
 ---
 
