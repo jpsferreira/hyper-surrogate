@@ -1,6 +1,6 @@
 [project]
 name = "hyper-surrogate"
-version = "1.0.0"
+version = "0.3.0"
 description = "Data-driven surrogates for hyperelastic constitutive models in finite element analysis"
 authors = [{ name = "Joao Ferreira", email = "fj.ferreira@fe.up.pt" }]
 readme = "README.md"
