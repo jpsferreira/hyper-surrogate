@@ -231,6 +231,23 @@ class Kinematics:
             return np.einsum("i,nij,j->n", a0, c2, a0)  # type: ignore[no-any-return]
         return np.einsum("ni,nij,nj->n", a0, c2, a0)  # type: ignore[no-any-return]
 
+    @staticmethod
+    def fiber_invariants_multi(c: np.ndarray, fiber_directions: list[np.ndarray]) -> np.ndarray:
+        """Compute I4, I5 for multiple fiber families.
+
+        Args:
+            c: Right Cauchy-Green tensor (N, 3, 3).
+            fiber_directions: List of fiber direction vectors, each (3,).
+
+        Returns:
+            Array of shape (N, 2*num_fibers) with columns [I4_1, I5_1, I4_2, I5_2, ...].
+        """
+        cols: list[np.ndarray] = []
+        for a0 in fiber_directions:
+            cols.append(Kinematics.fiber_invariant4(c, a0))
+            cols.append(Kinematics.fiber_invariant5(c, a0))
+        return np.column_stack(cols)
+
     def rotation_tensor(self, f: np.ndarray) -> Any:
         """
         Compute the rotation tensors.
