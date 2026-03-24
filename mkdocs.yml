@@ -10,8 +10,17 @@ copyright: Maintained by <a href="https://github.com/jpsferreira">Joao Ferreira<
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Theory: theory.md
+  - Theory:
+    - Overview: theory.md
+    - Constitutive Theory: constitutive_theory.md
   - Materials: materials.md
+  - Tutorials:
+    - Getting Started: tutorials/getting_started.md
+    - Data Generation: tutorials/data_generation.md
+    - Training Surrogates: tutorials/training_surrogates.md
+    - Fortran Export: tutorials/export_fortran.md
+    - Anisotropic Materials: tutorials/anisotropic_materials.md
+    - Advanced Topics: tutorials/advanced_topics.md
   - Examples: examples.md
   - API Reference: modules.md
   - About: about.md
