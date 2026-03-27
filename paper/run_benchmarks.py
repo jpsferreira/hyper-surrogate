@@ -32,16 +32,16 @@ RESULTS.mkdir(exist_ok=True)
 # -- hyper-surrogate imports -----------------------------------------
 from hyper_surrogate.benchmarking.metrics import BenchmarkResult
 from hyper_surrogate.benchmarking.reporting import results_to_latex, results_to_markdown
-from hyper_surrogate.data.dataset import Normalizer, create_datasets
+from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 from hyper_surrogate.data.deformation import DeformationGenerator
 from hyper_surrogate.mechanics.kinematics import Kinematics
 from hyper_surrogate.mechanics.materials import (
-    Demiray,
+    GasserOgdenHolzapfel,
+    HolzapfelOgden,
     MooneyRivlin,
     NeoHooke,
     Yeoh,
 )
-from hyper_surrogate.models.cann import CANN
 from hyper_surrogate.models.icnn import ICNN
 from hyper_surrogate.models.mlp import MLP
 from hyper_surrogate.models.polyconvex import PolyconvexICNN
@@ -61,6 +61,140 @@ def _isotropic_materials() -> list[tuple[str, Any]]:
         ("MooneyRivlin", MooneyRivlin()),
         ("Yeoh", Yeoh()),
     ]
+
+
+def _anisotropic_materials() -> list[tuple[str, Any]]:
+    a0 = np.array([1.0, 0.0, 0.0])
+    # Use reduced stiffness parameters to avoid exp overflow with combined deformations.
+    # These are still physiologically reasonable (soft tissue range).
+    return [
+        ("HolzapfelOgden", HolzapfelOgden(
+            parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "KBULK": 100.0},
+            fiber_direction=a0,
+        )),
+        ("GOH", GasserOgdenHolzapfel(
+            parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "kappa": 0.226, "KBULK": 100.0},
+            fiber_direction=a0,
+        )),
+    ]
+
+
+def _create_anisotropic_datasets(
+    material: Any,
+    n_samples: int,
+    seed: int = 42,
+    val_fraction: float = 0.15,
+) -> tuple[MaterialDataset, MaterialDataset, Normalizer, Normalizer]:
+    """Build energy datasets for anisotropic materials (bypasses evaluate_energy).
+
+    Computes W and dW/dI via sef_from_all_invariants, since the base evaluate_energy
+    relies on sef which is not available for fiber-based models.
+    """
+    from sympy import Symbol, diff
+    from sympy import lambdify as sym_lambdify
+
+    gen = DeformationGenerator(seed=seed)
+    # Tighter range for anisotropic models to avoid exp overflow in fiber terms
+    F = gen.combined(n_samples, stretch_range=(0.85, 1.2), shear_range=(-0.15, 0.15))
+    C = Kinematics.right_cauchy_green(F)
+
+    # Compute invariants
+    i1 = Kinematics.isochoric_invariant1(C)
+    i2 = Kinematics.isochoric_invariant2(C)
+    j = np.sqrt(Kinematics.det_invariant(C))
+
+    i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
+    inv_syms: list[Symbol] = [i1s, i2s, js]
+    inv_vals: list[np.ndarray] = [i1, i2, j]
+
+    fiber_inv_pairs: list[tuple[Symbol, Symbol]] = []
+    for k, a0 in enumerate(material._fiber_directions):
+        i4k = Symbol(f"I4_{k}")
+        i5k = Symbol(f"I5_{k}")
+        inv_syms.extend([i4k, i5k])
+        fiber_inv_pairs.append((i4k, i5k))
+        inv_vals.append(Kinematics.fiber_invariant4(C, a0))
+        inv_vals.append(Kinematics.fiber_invariant5(C, a0))
+
+    # Build symbolic W and dW/dI
+    W_sym = material.sef_from_all_invariants(i1s, i2s, js, fiber_inv_pairs or None)
+    dW_syms = [diff(W_sym, s) for s in inv_syms]
+
+    param_syms = list(material._symbols.values())
+    param_vals = list(material._params.values())
+
+    # Lambdify energy
+    W_fn = sym_lambdify((*inv_syms, *param_syms), W_sym, modules="numpy")
+    dW_fn = sym_lambdify((*inv_syms, *param_syms), dW_syms, modules="numpy")
+
+    energy = np.array(W_fn(*inv_vals, *param_vals), dtype=float).flatten()
+    dW_raw = dW_fn(*inv_vals, *param_vals)
+    n = len(C)
+    dW_dI = np.column_stack([np.broadcast_to(np.asarray(r, dtype=float), (n,)) for r in dW_raw])
+
+    # Build inputs
+    inputs = np.column_stack(inv_vals)
+
+    # Normalize and build datasets (same as create_datasets energy path)
+    in_norm = Normalizer().fit(inputs)
+    X = in_norm.transform(inputs).astype(np.float32)
+    W = energy.reshape(-1, 1).astype(np.float32)
+    S = (dW_dI * in_norm.params["std"]).astype(np.float32)
+
+    n_val = int(n * val_fraction)
+    idx = np.random.default_rng(seed).permutation(n)
+    ti, vi = idx[n_val:], idx[:n_val]
+
+    train_ds = MaterialDataset(X[ti], (W[ti], S[ti]))
+    val_ds = MaterialDataset(X[vi], (W[vi], S[vi]))
+    energy_norm = Normalizer().fit(energy.reshape(-1, 1))
+
+    return train_ds, val_ds, in_norm, energy_norm
+
+
+def _train_and_eval_from_datasets(
+    mat_name: str,
+    model_name: str,
+    model: torch.nn.Module,
+    train_ds: MaterialDataset,
+    val_ds: MaterialDataset,
+    epochs: int,
+    patience: int,
+) -> tuple[BenchmarkResult, dict[str, list[float]]]:
+    """Train and evaluate from pre-built datasets."""
+    trainer = Trainer(
+        model, train_ds, val_ds,
+        loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
+        max_epochs=epochs, lr=1e-3, patience=patience, batch_size=256,
+    )
+    t0 = time.time()
+    tr_result = trainer.fit()
+    training_time = time.time() - t0
+
+    tr_result.model.eval()
+    x_t = torch.tensor(val_ds.inputs, dtype=torch.float32, requires_grad=True)
+    pred_W = tr_result.model(x_t)
+    dW_dx = torch.autograd.grad(pred_W.sum(), x_t, create_graph=False)[0]
+
+    true_W = val_ds.targets[0].flatten()
+    true_S = val_ds.targets[1]
+    pred_W_np = pred_W.detach().numpy().flatten()
+    pred_S_np = dW_dx.detach().numpy()
+
+    from hyper_surrogate.benchmarking.metrics import METRIC_FUNCS
+
+    metrics: dict[str, float] = {}
+    for name, fn in METRIC_FUNCS.items():
+        metrics[f"energy_{name}"] = fn(true_W, pred_W_np)
+    for name, fn in METRIC_FUNCS.items():
+        metrics[f"stress_{name}"] = fn(true_S.flatten(), pred_S_np.flatten())
+
+    n_params = sum(p.numel() for p in tr_result.model.parameters())
+    result = BenchmarkResult(
+        material_name=mat_name, model_name=model_name,
+        metrics=metrics, n_parameters=n_params, training_time=training_time,
+    )
+    return result, tr_result.history
 
 
 def _train_and_eval(
@@ -162,6 +296,40 @@ def run_accuracy_benchmarks(quick: bool) -> list[dict[str, Any]]:
             try:
                 result, history = _train_and_eval(
                     material, mat_name, model_name, model, n_samples, epochs, patience
+                )
+                r2_e = result.metrics.get("energy_r2", 0)
+                r2_s = result.metrics.get("stress_r2", 0)
+                print(f"R2(W)={r2_e:.4f}  R2(dW/dI)={r2_s:.4f}  time={result.training_time:.1f}s")
+
+                bench_results.append(result)
+                all_results.append(result.to_dict())
+                _save_json(history, RESULTS / f"convergence_{mat_name}_{model_name.replace('/', '-')}.json")
+            except Exception as e:
+                print(f"FAILED: {e}")
+
+    # --- Anisotropic materials (5D invariant input: I1, I2, J, I4, I5) ---
+    for mat_name, material in _anisotropic_materials():
+        print(f"\n== {mat_name} (anisotropic) ==")
+        try:
+            train_ds, val_ds, in_norm, energy_norm = _create_anisotropic_datasets(
+                material, n_samples
+            )
+        except Exception as e:
+            print(f"  SKIP: data generation failed ({e})")
+            continue
+
+        input_dim = train_ds.inputs.shape[1]  # 5 for single-fiber
+
+        model_configs: list[tuple[str, torch.nn.Module]] = [
+            (f"MLP-{h_str}", MLP(input_dim=input_dim, output_dim=1, hidden_dims=hidden, activation="softplus")),
+            (f"ICNN-{h_str}", ICNN(input_dim=input_dim, hidden_dims=hidden)),
+        ]
+
+        for model_name, model in model_configs:
+            print(f"  {model_name} ...", end=" ", flush=True)
+            try:
+                result, history = _train_and_eval_from_datasets(
+                    mat_name, model_name, model, train_ds, val_ds, epochs, patience
                 )
                 r2_e = result.metrics.get("energy_r2", 0)
                 r2_s = result.metrics.get("stress_r2", 0)
