@@ -30,14 +30,7 @@ from typing import Any
 
 import numpy as np
 
-# ── paths ──────────────────────────────────────────────────────────
-ROOT = Path(__file__).resolve().parent
-FE_DIR = ROOT / "results" / "fe_validation"
-FE_DIR.mkdir(parents=True, exist_ok=True)
-
-
-# ── hyper-surrogate imports ────────────────────────────────────────
-from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
+from hyper_surrogate.data.dataset import create_datasets
 from hyper_surrogate.export.fortran.analytical import UMATHandler
 from hyper_surrogate.export.weights import extract_weights
 from hyper_surrogate.mechanics.kinematics import Kinematics
@@ -45,6 +38,10 @@ from hyper_surrogate.mechanics.materials import MooneyRivlin, NeoHooke, Yeoh
 from hyper_surrogate.models.mlp import MLP
 from hyper_surrogate.training.losses import EnergyStressLoss
 from hyper_surrogate.training.trainer import Trainer
+
+ROOT = Path(__file__).resolve().parent
+FE_DIR = ROOT / "results" / "fe_validation"
+FE_DIR.mkdir(parents=True, exist_ok=True)
 
 MATERIALS: dict[str, Any] = {
     "NeoHooke": NeoHooke,
@@ -78,9 +75,14 @@ def train_and_export(mat_name: str) -> dict[str, Any]:
 
     model = MLP(input_dim=3, output_dim=1, hidden_dims=[64, 64, 64], activation="softplus")
     tr_result = Trainer(
-        model, train_ds, val_ds,
+        model,
+        train_ds,
+        val_ds,
         loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
-        max_epochs=2000, lr=1e-3, patience=200, batch_size=512,
+        max_epochs=2000,
+        lr=1e-3,
+        patience=200,
+        batch_size=512,
     ).fit()
     best_val = tr_result.history["val_loss"][tr_result.best_epoch]
     print(f"    Best val loss: {best_val:.6f} (epoch {tr_result.best_epoch})")
@@ -198,7 +200,9 @@ Single-element validation for {mat_name} UMAT
 
 def _abaqus_uniaxial(mat_name: str, params: dict[str, float], max_stretch: float = 1.3) -> str:
     disp = max_stretch - 1.0
-    return _abaqus_header(mat_name, params) + f"""\
+    return (
+        _abaqus_header(mat_name, params)
+        + f"""\
 **
 ** ── Uniaxial tension in X ──
 **
@@ -240,11 +244,14 @@ S, E
 **
 *END STEP
 """
+    )
 
 
 def _abaqus_biaxial(mat_name: str, params: dict[str, float], max_stretch: float = 1.2) -> str:
     disp = max_stretch - 1.0
-    return _abaqus_header(mat_name, params) + f"""\
+    return (
+        _abaqus_header(mat_name, params)
+        + f"""\
 **
 ** ── Equibiaxial tension in X and Y ──
 **
@@ -283,10 +290,13 @@ S, E, SDV
 **
 *END STEP
 """
+    )
 
 
 def _abaqus_shear(mat_name: str, params: dict[str, float], max_shear: float = 0.3) -> str:
-    return _abaqus_header(mat_name, params) + f"""\
+    return (
+        _abaqus_header(mat_name, params)
+        + f"""\
 **
 ** ── Simple shear in XY ──
 **
@@ -317,6 +327,7 @@ S, E, SDV
 **
 *END STEP
 """
+    )
 
 
 def generate_abaqus_inputs(mat_name: str, params: dict[str, float]) -> None:
@@ -363,8 +374,9 @@ MATErial 1
 def _feap_uniaxial(mat_name: str, params: dict[str, float], max_stretch: float = 1.3) -> str:
     disp = max_stretch - 1.0
     nsteps = 20
-    dt = disp / nsteps
-    return _feap_header(mat_name, params) + f"""\
+    return (
+        _feap_header(mat_name, params)
+        + f"""\
 ! Boundary conditions: fix base, pull top in X
 BOUNdary conditions
   1  0  1  1  1    ! node 1: fix x, y, z
@@ -398,12 +410,15 @@ END batch
 
 STOP
 """
+    )
 
 
 def _feap_biaxial(mat_name: str, params: dict[str, float], max_stretch: float = 1.2) -> str:
     disp = max_stretch - 1.0
     nsteps = 20
-    return _feap_header(mat_name, params) + f"""\
+    return (
+        _feap_header(mat_name, params)
+        + f"""\
 ! Boundary conditions: equibiaxial
 BOUNdary conditions
   1  0  1  1  1
@@ -437,11 +452,14 @@ END batch
 
 STOP
 """
+    )
 
 
 def _feap_shear(mat_name: str, params: dict[str, float], max_shear: float = 0.3) -> str:
     nsteps = 20
-    return _feap_header(mat_name, params) + f"""\
+    return (
+        _feap_header(mat_name, params)
+        + f"""\
 ! Boundary conditions: simple shear
 BOUNdary conditions
   1  0  1  1  1
@@ -471,6 +489,7 @@ END batch
 
 STOP
 """
+    )
 
 
 def generate_feap_inputs(mat_name: str, params: dict[str, float]) -> None:

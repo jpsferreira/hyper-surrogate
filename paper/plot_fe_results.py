@@ -76,7 +76,7 @@ def main() -> None:
 
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
 
-    for ax, test_name in zip(axes, TESTS):
+    for ax, test_name in zip(axes, TESTS, strict=False):
         test_ref = ref["tests"][test_name]
         stretch = np.array(test_ref["stretch"])
         cauchy_ref = np.array(test_ref["cauchy_11"])
@@ -93,8 +93,11 @@ def main() -> None:
             csv_analytical = _load_csv(FE_DIR / f"{solver}_{test_name}_analytical.csv")
             if csv_analytical is not None:
                 ax.plot(
-                    csv_analytical["stretch"], csv_analytical["sigma11"],
-                    style, color="#0072B2", linewidth=1.5,
+                    csv_analytical["stretch"],
+                    csv_analytical["sigma11"],
+                    style,
+                    color="#0072B2",
+                    linewidth=1.5,
                     label=f"{label_prefix} analytical UMAT",
                 )
 
@@ -102,8 +105,11 @@ def main() -> None:
             csv_hybrid = _load_csv(FE_DIR / f"{solver}_{test_name}_hybrid.csv")
             if csv_hybrid is not None:
                 ax.plot(
-                    csv_hybrid["stretch"], csv_hybrid["sigma11"],
-                    style, color="#D55E00", linewidth=1.5,
+                    csv_hybrid["stretch"],
+                    csv_hybrid["sigma11"],
+                    style,
+                    color="#D55E00",
+                    linewidth=1.5,
                     label=f"{label_prefix} NN UMAT",
                 )
 
@@ -121,7 +127,7 @@ def main() -> None:
 
     # Also plot PK2 stress
     fig2, axes2 = plt.subplots(1, 3, figsize=(14, 4))
-    for ax, test_name in zip(axes2, TESTS):
+    for ax, test_name in zip(axes2, TESTS, strict=False):
         test_ref = ref["tests"][test_name]
         stretch = np.array(test_ref["stretch"])
         pk2_11 = np.array(test_ref["pk2_11"])
@@ -144,7 +150,7 @@ def main() -> None:
 
     # Energy plot
     fig3, axes3 = plt.subplots(1, 3, figsize=(14, 4))
-    for ax, test_name in zip(axes3, TESTS):
+    for ax, test_name in zip(axes3, TESTS, strict=False):
         test_ref = ref["tests"][test_name]
         stretch = np.array(test_ref["stretch"])
         energy = np.array(test_ref["energy"])

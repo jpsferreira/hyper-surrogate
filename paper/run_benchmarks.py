@@ -24,12 +24,6 @@ from typing import Any
 import numpy as np
 import torch
 
-# -- paths -----------------------------------------------------------
-ROOT = Path(__file__).resolve().parent
-RESULTS = ROOT / "results"
-RESULTS.mkdir(exist_ok=True)
-
-# -- hyper-surrogate imports -----------------------------------------
 from hyper_surrogate.benchmarking.metrics import BenchmarkResult
 from hyper_surrogate.benchmarking.reporting import results_to_latex, results_to_markdown
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
@@ -47,6 +41,10 @@ from hyper_surrogate.models.mlp import MLP
 from hyper_surrogate.models.polyconvex import PolyconvexICNN
 from hyper_surrogate.training.losses import EnergyStressLoss
 from hyper_surrogate.training.trainer import Trainer
+
+ROOT = Path(__file__).resolve().parent
+RESULTS = ROOT / "results"
+RESULTS.mkdir(exist_ok=True)
 
 
 # -- helpers ---------------------------------------------------------
@@ -68,14 +66,20 @@ def _anisotropic_materials() -> list[tuple[str, Any]]:
     # Use reduced stiffness parameters to avoid exp overflow with combined deformations.
     # These are still physiologically reasonable (soft tissue range).
     return [
-        ("HolzapfelOgden", HolzapfelOgden(
-            parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "KBULK": 100.0},
-            fiber_direction=a0,
-        )),
-        ("GOH", GasserOgdenHolzapfel(
-            parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "kappa": 0.226, "KBULK": 100.0},
-            fiber_direction=a0,
-        )),
+        (
+            "HolzapfelOgden",
+            HolzapfelOgden(
+                parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "KBULK": 100.0},
+                fiber_direction=a0,
+            ),
+        ),
+        (
+            "GOH",
+            GasserOgdenHolzapfel(
+                parameters={"a": 0.059, "b": 4.0, "af": 2.0, "bf": 4.0, "kappa": 0.226, "KBULK": 100.0},
+                fiber_direction=a0,
+            ),
+        ),
     ]
 
 
@@ -163,9 +167,14 @@ def _train_and_eval_from_datasets(
 ) -> tuple[BenchmarkResult, dict[str, list[float]]]:
     """Train and evaluate from pre-built datasets."""
     trainer = Trainer(
-        model, train_ds, val_ds,
+        model,
+        train_ds,
+        val_ds,
         loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
-        max_epochs=epochs, lr=1e-3, patience=patience, batch_size=256,
+        max_epochs=epochs,
+        lr=1e-3,
+        patience=patience,
+        batch_size=256,
     )
     t0 = time.time()
     tr_result = trainer.fit()
@@ -191,8 +200,11 @@ def _train_and_eval_from_datasets(
 
     n_params = sum(p.numel() for p in tr_result.model.parameters())
     result = BenchmarkResult(
-        material_name=mat_name, model_name=model_name,
-        metrics=metrics, n_parameters=n_params, training_time=training_time,
+        material_name=mat_name,
+        model_name=model_name,
+        metrics=metrics,
+        n_parameters=n_params,
+        training_time=training_time,
     )
     return result, tr_result.history
 
@@ -212,14 +224,19 @@ def _train_and_eval(
     Uses the library's create_datasets(target_type="energy") which handles
     normalization correctly for the EnergyStressLoss.
     """
-    train_ds, val_ds, in_norm, energy_norm = create_datasets(
+    train_ds, val_ds, _in_norm, _energy_norm = create_datasets(
         material, n_samples, input_type="invariants", target_type="energy", seed=seed
     )
 
     trainer = Trainer(
-        model, train_ds, val_ds,
+        model,
+        train_ds,
+        val_ds,
         loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
-        max_epochs=epochs, lr=1e-3, patience=patience, batch_size=256,
+        max_epochs=epochs,
+        lr=1e-3,
+        patience=patience,
+        batch_size=256,
     )
 
     t0 = time.time()
@@ -294,16 +311,14 @@ def run_accuracy_benchmarks(quick: bool) -> list[dict[str, Any]]:
         for model_name, model in model_configs:
             print(f"  {model_name} ...", end=" ", flush=True)
             try:
-                result, history = _train_and_eval(
-                    material, mat_name, model_name, model, n_samples, epochs, patience
-                )
+                result, history = _train_and_eval(material, mat_name, model_name, model, n_samples, epochs, patience)
                 r2_e = result.metrics.get("energy_r2", 0)
                 r2_s = result.metrics.get("stress_r2", 0)
                 print(f"R2(W)={r2_e:.4f}  R2(dW/dI)={r2_s:.4f}  time={result.training_time:.1f}s")
 
                 bench_results.append(result)
                 all_results.append(result.to_dict())
-                _save_json(history, RESULTS / f"convergence_{mat_name}_{model_name.replace('/', '-')}.json")
+                _save_json(history, RESULTS / f"convergence_{mat_name}_{model_name.replace("/", "-")}.json")
             except Exception as e:
                 print(f"FAILED: {e}")
 
@@ -311,9 +326,7 @@ def run_accuracy_benchmarks(quick: bool) -> list[dict[str, Any]]:
     for mat_name, material in _anisotropic_materials():
         print(f"\n== {mat_name} (anisotropic) ==")
         try:
-            train_ds, val_ds, in_norm, energy_norm = _create_anisotropic_datasets(
-                material, n_samples
-            )
+            train_ds, val_ds, _in_norm, _energy_norm = _create_anisotropic_datasets(material, n_samples)
         except Exception as e:
             print(f"  SKIP: data generation failed ({e})")
             continue
@@ -337,15 +350,13 @@ def run_accuracy_benchmarks(quick: bool) -> list[dict[str, Any]]:
 
                 bench_results.append(result)
                 all_results.append(result.to_dict())
-                _save_json(history, RESULTS / f"convergence_{mat_name}_{model_name.replace('/', '-')}.json")
+                _save_json(history, RESULTS / f"convergence_{mat_name}_{model_name.replace("/", "-")}.json")
             except Exception as e:
                 print(f"FAILED: {e}")
 
     # Save tables
     _save_json(all_results, RESULTS / "benchmarks.json")
-    (RESULTS / "benchmarks.tex").write_text(
-        results_to_latex(bench_results, caption="Surrogate accuracy benchmarks")
-    )
+    (RESULTS / "benchmarks.tex").write_text(results_to_latex(bench_results, caption="Surrogate accuracy benchmarks"))
     (RESULTS / "benchmarks.md").write_text(results_to_markdown(bench_results))
 
     print(f"\nSaved {len(all_results)} results to {RESULTS}/benchmarks.*")
@@ -439,9 +450,9 @@ def run_timing_benchmarks(quick: bool) -> None:
 
     _save_json(timing, RESULTS / "timing.json")
     print(f"\n== Inference timing ({n_eval} samples, {n_repeats} repeats) ==")
-    print(f"  Analytical: {timing['analytical_mean_ms']:.2f} +/- {timing['analytical_std_ms']:.2f} ms")
-    print(f"  NN (MLP):   {timing['nn_mean_ms']:.2f} +/- {timing['nn_std_ms']:.2f} ms")
-    print(f"  Speedup:    {timing['speedup']:.1f}x")
+    print(f"  Analytical: {timing["analytical_mean_ms"]:.2f} +/- {timing["analytical_std_ms"]:.2f} ms")
+    print(f"  NN (MLP):   {timing["nn_mean_ms"]:.2f} +/- {timing["nn_std_ms"]:.2f} ms")
+    print(f"  Speedup:    {timing["speedup"]:.1f}x")
 
 
 # -- main ------------------------------------------------------------
@@ -450,7 +461,7 @@ def main() -> None:
     parser.add_argument("--quick", action="store_true", help="Reduced run for testing")
     args = parser.parse_args()
 
-    print(f"{'Quick' if args.quick else 'Full'} benchmark suite")
+    print(f"{"Quick" if args.quick else "Full"} benchmark suite")
     print(f"Results directory: {RESULTS}")
 
     run_accuracy_benchmarks(args.quick)

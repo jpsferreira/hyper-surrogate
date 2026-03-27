@@ -3,7 +3,7 @@
 Reads JSON files from results/ and produces PDF/SVG figures in figures/.
 
 Figures:
-    1. accuracy_comparison.pdf   — R² bar chart: materials × architectures
+    1. accuracy_comparison.pdf   -- R^2 bar chart: materials x architectures
     2. convergence_curves.pdf    — Training/validation loss curves
     3. stress_scatter.pdf        — Predicted vs analytical stress (per-component)
     4. error_distribution.pdf    — Error histograms per architecture
@@ -95,8 +95,8 @@ def plot_accuracy_comparison(fmt: str) -> None:
         print("  Skipping accuracy_comparison (no data)")
         return
 
-    materials = sorted(set(d["material"] for d in data))
-    models = sorted(set(d["model"] for d in data))
+    materials = sorted({d["material"] for d in data})
+    models = sorted({d["model"] for d in data})
 
     # Plot R^2 for both energy and stress gradients
     for metric_key, ylabel, suffix in [
@@ -223,11 +223,14 @@ def plot_stress_scatter(fmt: str) -> None:
 
     grad_labels = ["dW/dI1", "dW/dI2", "dW/dJ"]
 
-    for ax, (name, model) in zip(axes, models_to_plot):
+    for ax, (name, model) in zip(axes, models_to_plot, strict=False):
         Trainer(
-            model, train_ds, val_ds,
+            model,
+            train_ds,
+            val_ds,
             loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
-            max_epochs=500, patience=100,
+            max_epochs=500,
+            patience=100,
         ).fit()
         model.eval()
 
@@ -304,9 +307,12 @@ def plot_error_distribution(fmt: str) -> None:
 
     for name, model in architectures:
         Trainer(
-            model, train_ds, val_ds,
+            model,
+            train_ds,
+            val_ds,
             loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
-            max_epochs=500, patience=100,
+            max_epochs=500,
+            patience=100,
         ).fit()
         model.eval()
 
@@ -322,7 +328,10 @@ def plot_error_distribution(fmt: str) -> None:
         rel_error_flat = rel_error_flat[rel_error_flat < 1.0]
 
         ax.hist(
-            rel_error_flat, bins=100, alpha=0.6, density=True,
+            rel_error_flat,
+            bins=100,
+            alpha=0.6,
+            density=True,
             label=f"{name} (median={np.median(rel_error_flat):.2e})",
             color=_color_for(name),
         )
@@ -391,17 +400,19 @@ def plot_timing(fmt: str) -> None:
     stds = [data["analytical_std_ms"], data["nn_std_ms"]]
     colors = ["#999999", COLORS["MLP"]]
 
-    bars = ax.bar(methods, means, yerr=stds, capsize=5, color=colors, edgecolor="white", width=0.5)
+    ax.bar(methods, means, yerr=stds, capsize=5, color=colors, edgecolor="white", width=0.5)
     ax.set_ylabel("Inference time (ms)")
-    ax.set_title(f"Evaluation speed ({data['n_eval']} samples)")
+    ax.set_title(f"Evaluation speed ({data["n_eval"]} samples)")
 
     # Annotate speedup
     if data["speedup"] > 1:
         ax.annotate(
-            f"{data['speedup']:.1f}× faster",
-            xy=(1, means[1]), xytext=(1.3, means[0] * 0.5),
-            arrowprops=dict(arrowstyle="->", color="black"),
-            fontsize=10, fontweight="bold",
+            f"{data["speedup"]:.1f}x faster",
+            xy=(1, means[1]),
+            xytext=(1.3, means[0] * 0.5),
+            arrowprops={"arrowstyle": "->", "color": "black"},
+            fontsize=10,
+            fontweight="bold",
         )
 
     fig.tight_layout()

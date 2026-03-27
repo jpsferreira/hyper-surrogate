@@ -27,16 +27,17 @@ uv run python paper/run_benchmarks.py
 
 ## Scripts
 
-| Script | Purpose | Outputs |
-|--------|---------|---------|
-| `run_benchmarks.py` | Accuracy benchmarks (6 materials × 4+ architectures), scaling study, timing | `results/benchmarks.json`, `.tex`, `.md`, convergence histories |
-| `generate_figures.py` | Publication-quality figures from benchmark data | `figures/*.pdf` (or `.svg`/`.png`) |
-| `fe_validation.py` | Train surrogate, export analytical + hybrid UMATs, generate Abaqus/FEAP inputs | `results/fe_validation/` |
-| `plot_fe_results.py` | Compare FE simulation results against analytical reference | `figures/fe_validation*.pdf` |
+| Script                | Purpose                                                                        | Outputs                                                         |
+| --------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `run_benchmarks.py`   | Accuracy benchmarks (6 materials × 4+ architectures), scaling study, timing    | `results/benchmarks.json`, `.tex`, `.md`, convergence histories |
+| `generate_figures.py` | Publication-quality figures from benchmark data                                | `figures/*.pdf` (or `.svg`/`.png`)                              |
+| `fe_validation.py`    | Train surrogate, export analytical + hybrid UMATs, generate Abaqus/FEAP inputs | `results/fe_validation/`                                        |
+| `plot_fe_results.py`  | Compare FE simulation results against analytical reference                     | `figures/fe_validation*.pdf`                                    |
 
 ## FE validation workflow
 
 1. Run `fe_validation.py` to generate:
+
    - Analytical UMAT (`.f`) — symbolic, reference solution
    - Hybrid NN UMAT (`.f90`) — neural network surrogate
    - Abaqus `.inp` files (uniaxial, biaxial, shear)
@@ -44,6 +45,7 @@ uv run python paper/run_benchmarks.py
    - Analytical reference data (`.json`)
 
 2. Run simulations in Abaqus:
+
    ```bash
    cd paper/results/fe_validation
    abaqus job=uniaxial_analytical user=neohooke_analytical.f
@@ -51,11 +53,13 @@ uv run python paper/run_benchmarks.py
    ```
 
 3. Run simulations in FEAP:
+
    ```bash
    feap -i feap_uniaxial.inp
    ```
 
 4. Extract results to CSV (columns: `stretch,sigma11,sigma22,sigma33`) and place in `results/fe_validation/`:
+
    - `abaqus_uniaxial_analytical.csv`
    - `abaqus_uniaxial_hybrid.csv`
    - `feap_uniaxial_analytical.csv`
