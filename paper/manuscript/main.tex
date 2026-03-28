@@ -1,0 +1,103 @@
+\documentclass[preprint,12pt]{elsarticle}
+
+% ── Packages ──────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+
+% ── Math shortcuts ────────────────────────────────────────────────
+\newcommand{\tens}[1]{\bm{#1}}
+\newcommand{\mat}[1]{\mathbf{#1}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\dd}[2]{\frac{\mathrm{d} #1}{\mathrm{d} #2}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\dev}{\operatorname{dev}}
+\newcommand{\sym}{\operatorname{sym}}
+\newcommand{\sef}{\Psi}
+\newcommand{\Cmat}{\tens{C}}
+\newcommand{\Fmat}{\tens{F}}
+\newcommand{\Smat}{\tens{S}}
+\newcommand{\sigmat}{\tens{\sigma}}
+
+% ── Listings style for Fortran/Python ─────────────────────────────
+\lstdefinestyle{fortran}{
+  language=[90]Fortran,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  frame=single,
+  breaklines=true,
+}
+\lstdefinestyle{python}{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\color{gray},
+  frame=single,
+  breaklines=true,
+}
+
+% ── Journal metadata ──────────────────────────────────────────────
+\journal{Computer Methods in Applied Mechanics and Engineering}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Data-driven surrogates for hyperelastic constitutive models:\\
+  neural network architectures, Fortran export, and finite element validation}
+
+\author[inst1]{First Author\corref{cor}}
+\ead{first.author@university.edu}
+\author[inst1]{Second Author}
+
+\cortext[cor]{Corresponding author.}
+\affiliation[inst1]{organization={Department of Mechanical Engineering, University},
+  city={City}, country={Country}}
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\begin{keyword}
+  hyperelasticity \sep constitutive surrogate \sep neural network \sep
+  input-convex network \sep polyconvexity \sep UMAT \sep finite element method
+\end{keyword}
+
+\end{frontmatter}
+
+% ── Sections ──────────────────────────────────────────────────────
+\input{introduction}
+\input{continuum_mechanics}
+\input{neural_architectures}
+\input{training}
+\input{fortran_export}
+\input{results}
+\input{fe_validation}
+\input{discussion}
+\input{conclusion}
+
+% ── References ────────────────────────────────────────────────────
+\section*{Acknowledgments}
+% TODO: Add funding acknowledgments.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{references}
+
+% ── Appendices ────────────────────────────────────────────────────
+\appendix
+\input{appendix}
+
+\end{document}
