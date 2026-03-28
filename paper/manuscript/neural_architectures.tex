@@ -1,0 +1,140 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 3 — Neural Network Architectures
+% ══════════════════════════════════════════════════════════════════
+\section{Neural network architectures}
+\label{sec:architectures}
+
+All architectures learn a scalar strain energy function
+$\hat{\sef}: \R^d \to \R$, where $d = 3$ for isotropic materials
+($\bar{I}_1, \bar{I}_2, J$) and $d = 5$ for single-fiber anisotropic
+materials ($\bar{I}_1, \bar{I}_2, J, I_4, I_5$).  Stress-like quantities are
+obtained by automatic differentiation:
+$\partial\hat{\sef}/\partial I_\alpha$.
+
+\subsection{Multilayer perceptron (MLP)}
+\label{sec:architectures:mlp}
+
+The baseline architecture is a standard feedforward network:
+\begin{equation}
+  \tens{z}^{(0)} = \tens{x}, \qquad
+  \tens{z}^{(\ell)} = \phi\bigl(\mat{W}^{(\ell)}\tens{z}^{(\ell-1)}
+    + \tens{b}^{(\ell)}\bigr), \qquad
+  \hat{\sef} = \mat{w}^{(L)}\tens{z}^{(L-1)} + b^{(L)},
+  \label{eq:mlp}
+\end{equation}
+where $\phi$ is the softplus activation $\phi(x) = \ln(1 + e^x)$, chosen for
+its smoothness (required for second-derivative computations in the tangent
+operator).  Unless stated otherwise, we use two hidden layers of width~64.
+
+The MLP imposes no convexity or symmetry constraints and serves as a universal
+approximation baseline.
+
+\subsection{Input-convex neural network (ICNN)}
+\label{sec:architectures:icnn}
+
+Following Amos et al.~\cite{% TODO: Amos2017
+}, the ICNN guarantees that $\hat{\sef}$ is convex in $\tens{x}$ by
+construction:
+\begin{align}
+  \tens{z}^{(1)} &= \phi\bigl(\mat{W}^{(1)}_x \tens{x} + \tens{b}^{(1)}\bigr), \nonumber \\
+  \tens{z}^{(\ell)} &= \phi\bigl(
+    \underbrace{\mat{\tilde{W}}^{(\ell)}_z}_{\geq 0}\tens{z}^{(\ell-1)}
+    + \mat{W}^{(\ell)}_x \tens{x}
+    + \tens{b}^{(\ell)}\bigr), \qquad \ell = 2, \ldots, L, \nonumber \\
+  \hat{\sef} &= \underbrace{\tilde{\mat{w}}^{(L)}_z}_{\geq 0} \tens{z}^{(L-1)}
+    + \mat{w}^{(L)}_x \tens{x} + b^{(L)}.
+  \label{eq:icnn}
+\end{align}
+Non-negativity of the z-path weights is enforced via a softplus
+reparameterization: $\mat{\tilde{W}} = \ln(1 + e^{\mat{W}_\text{raw}})$.
+Skip connections from the input $\tens{x}$ to every hidden layer ensure
+expressive power despite the convexity constraint.
+
+Convexity of $\hat{\sef}$ with respect to the invariants is a necessary (but
+not sufficient) condition for material stability.  The ICNN output is always
+scalar ($\hat{\sef} \in \R$).
+
+\subsection{Polyconvex ICNN}
+\label{sec:architectures:polyconvex}
+
+Polyconvexity --- convexity of $\sef$ jointly in $(\Fmat, \text{cof}\,\Fmat,
+\det\Fmat)$ --- is a stronger thermodynamic requirement that implies
+quasi-convexity and ellipticity \cite{% TODO: Ball1977, Schroder2003
+}.  Following Klein et al.~\cite{% TODO: Klein2022
+}, we decompose the invariant space into groups and assign a separate ICNN
+branch to each:
+\begin{equation}
+  \hat{\sef}(\tens{x}) = \sum_{g=1}^{G}
+    \hat{\sef}_g\bigl(\tens{x}_{g}\bigr),
+  \label{eq:polyconvex}
+\end{equation}
+where each $\hat{\sef}_g$ is an ICNN that is convex in its respective
+invariant group $\tens{x}_g$.  For isotropic materials, we use three groups:
+$\{I_1\}$, $\{I_2\}$, $\{J\}$.  Each branch is independently convex, and
+their sum preserves convexity.
+
+The total energy inherits polyconvexity provided the invariant groups are
+chosen to correspond to convex functions of $(\Fmat, \text{cof}\,\Fmat,
+\det\Fmat)$, as shown in \Cref{tab:polyconvex_groups}.
+
+\begin{table}[htbp]
+\centering
+\caption{Polyconvex ICNN invariant groups.}
+\label{tab:polyconvex_groups}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Material type} & \textbf{Groups} & \textbf{Convexity argument} \\
+\midrule
+Isotropic   & $\{\bar{I}_1\}$, $\{\bar{I}_2\}$, $\{J\}$
+  & Each is a convex function of $\Fmat$, $\text{cof}\,\Fmat$, or $\det\Fmat$ \\
+Anisotropic & $\{\bar{I}_1\}$, $\{\bar{I}_2\}$, $\{J\}$, $\{I_4, I_5\}$
+  & Fiber invariants are convex in $\Fmat$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architecture summary}
+
+\begin{table}[htbp]
+\centering
+\caption{Summary of neural architectures. All use softplus activations and
+  two hidden layers of width~64 unless noted.}
+\label{tab:architectures}
+\begin{tabular}{@{}lcccl@{}}
+\toprule
+\textbf{Architecture} & \textbf{Convex?} & \textbf{Polyconvex?}
+  & \textbf{Parameters} & \textbf{Notes} \\
+\midrule
+MLP            & No  & No  &
+  % TODO: Fill actual parameter counts from benchmarks.
+  \textbf{[N]}
+  & Universal baseline \\
+ICNN           & Yes & No  &
+  \textbf{[N]}
+  & Convex in invariant space \\
+Polyconvex     & Yes & Yes &
+  \textbf{[N]}
+  & Separate ICNN per invariant group \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ── Architecture diagram placeholder ──────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Replace with TikZ or PDF diagram showing:
+%   (a) MLP: x -> hidden -> hidden -> W
+%   (b) ICNN: x -> hidden (non-neg z-weights, skip connections) -> W
+%   (c) Polyconvex: x split into groups -> branch ICNNs -> sum -> W
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
+  \textbf{[PLACEHOLDER]} \\[0.5em]
+  Architecture diagrams: (a) MLP, (b) ICNN with skip connections and
+  non-negative z-path weights, (c) Polyconvex ICNN with separate branches
+  per invariant group.
+\vspace{1cm}}}
+\caption{Schematic of the three neural architectures.  Dashed arrows in (b)
+  indicate skip connections from the input; $\oplus$ symbols with ``$\geq 0$''
+  labels indicate non-negative weight enforcement via softplus
+  reparameterization.}
+\label{fig:architectures}
+\end{figure}

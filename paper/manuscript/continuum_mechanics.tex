@@ -1,0 +1,125 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 2 — Continuum Mechanics Background
+% ══════════════════════════════════════════════════════════════════
+\section{Continuum mechanics framework}
+\label{sec:continuum}
+
+\subsection{Kinematics}
+\label{sec:continuum:kinematics}
+
+Consider a body undergoing a deformation described by the deformation gradient
+$\Fmat = \pd{\tens{x}}{\tens{X}} \in \R^{3 \times 3}$, where $\tens{X}$ and
+$\tens{x}$ denote material and spatial coordinates, respectively.  The right
+Cauchy--Green deformation tensor is $\Cmat = \Fmat^T \Fmat$, with determinant
+$J = \det \Fmat > 0$.
+
+For nearly incompressible materials, the multiplicative decomposition
+$\Fmat = J^{1/3}\,\bar{\Fmat}$ yields the isochoric part
+$\bar{\Cmat} = J^{-2/3}\,\Cmat$ and the isochoric invariants:
+\begin{align}
+  \bar{I}_1 &= \tr(\bar{\Cmat}), &
+  \bar{I}_2 &= \tfrac{1}{2}\bigl[\bar{I}_1^2 - \tr(\bar{\Cmat}^2)\bigr].
+  \label{eq:isochoric_invariants}
+\end{align}
+For fiber-reinforced materials with preferred direction $\tens{a}_0$, the
+pseudo-invariants are:
+\begin{align}
+  I_4 &= \tens{a}_0 \cdot \Cmat\,\tens{a}_0, &
+  I_5 &= \tens{a}_0 \cdot \Cmat^2\,\tens{a}_0.
+  \label{eq:fiber_invariants}
+\end{align}
+
+\subsection{Hyperelastic constitutive relations}
+\label{sec:continuum:constitutive}
+
+A hyperelastic material is characterized by a strain energy function (SEF)
+$\sef$ such that the second Piola--Kirchhoff stress and the material tangent
+are:
+\begin{align}
+  \Smat &= 2\,\pd{\sef}{\Cmat}, &
+  \mathbb{C} &= 4\,\frac{\partial^2 \sef}{\partial \Cmat \, \partial \Cmat}.
+  \label{eq:pk2_tangent}
+\end{align}
+Expressing $\sef$ in terms of invariants $\{I_\alpha\}$, the chain rule gives:
+\begin{equation}
+  \Smat = 2 \sum_\alpha \pd{\sef}{I_\alpha}\,\pd{I_\alpha}{\Cmat},
+  \label{eq:pk2_chain}
+\end{equation}
+where the invariant derivatives $\partial I_\alpha / \partial \Cmat$ are known
+analytically.  This decomposition is central to the hybrid NN--UMAT approach
+(\Cref{sec:fortran_export}): the neural network learns
+$\sef(I_1, I_2, \ldots)$ and its invariant gradients $\partial \sef / \partial
+I_\alpha$, while the kinematics remain analytical.
+
+\subsection{Material models}
+\label{sec:continuum:materials}
+
+We consider five materials spanning isotropic and anisotropic behavior.
+
+\subsubsection{Isotropic models}
+
+\paragraph{Neo-Hookean.}
+\begin{equation}
+  \sef = C_{10}(\bar{I}_1 - 3) + \frac{K}{2}(J - 1)^2.
+  \label{eq:neohooke}
+\end{equation}
+
+\paragraph{Mooney--Rivlin.}
+\begin{equation}
+  \sef = C_{10}(\bar{I}_1 - 3) + C_{01}(\bar{I}_2 - 3) + \frac{K}{2}(J - 1)^2.
+  \label{eq:mooneyrivlin}
+\end{equation}
+
+\paragraph{Yeoh.}
+\begin{equation}
+  \sef = \sum_{i=1}^{3} C_{i0}(\bar{I}_1 - 3)^i + \frac{K}{2}(J - 1)^2.
+  \label{eq:yeoh}
+\end{equation}
+
+\subsubsection{Anisotropic models}
+
+\paragraph{Holzapfel--Ogden (HO).}
+A fiber-reinforced model with one family of fibers ($\tens{a}_0$):
+\begin{equation}
+  \sef = \frac{a}{2b}\bigl[e^{b(\bar{I}_1 - 3)} - 1\bigr]
+       + \frac{a_f}{2b_f}\bigl[e^{b_f\langle I_4 - 1 \rangle^2} - 1\bigr]
+       + \frac{K}{2}(J - 1)^2,
+  \label{eq:holzapfelogden}
+\end{equation}
+where $\langle \cdot \rangle$ denotes the Macaulay bracket (tension-only fiber
+contribution).
+
+\paragraph{Gasser--Ogden--Holzapfel (GOH).}
+Extends HO with a fiber dispersion parameter $\kappa \in [0, 1/3]$:
+\begin{equation}
+  \sef = \frac{a}{2b}\bigl[e^{b(\bar{I}_1 - 3)} - 1\bigr]
+       + \frac{a_f}{2b_f}\Bigl[e^{b_f\bigl[\kappa \bar{I}_1
+         + (1-3\kappa)I_4 - 1\bigr]^2} - 1\Bigr]
+       + \frac{K}{2}(J - 1)^2.
+  \label{eq:goh}
+\end{equation}
+
+% ── Summary table ─────────────────────────────────────────────────
+\begin{table}[htbp]
+\centering
+\caption{Material models, invariant inputs, and default parameters used in the
+  benchmarks.}
+\label{tab:materials}
+\begin{tabular}{@{}llcl@{}}
+\toprule
+\textbf{Model} & \textbf{Type} & \textbf{Input dim} & \textbf{Parameters} \\
+\midrule
+Neo-Hookean    & Isotropic   & 3 ($\bar{I}_1, \bar{I}_2, J$)
+  & $C_{10}=0.5$, $K=100$ \\
+Mooney--Rivlin & Isotropic   & 3
+  & $C_{10}=0.5$, $C_{01}=0.2$, $K=100$ \\
+Yeoh           & Isotropic   & 3
+  & $C_{10}=0.5$, $C_{20}=0.1$, $C_{30}=0.01$, $K=100$ \\
+\midrule
+Holzapfel--Ogden & Anisotropic & 5 ($\bar{I}_1, \bar{I}_2, J, I_4, I_5$)
+  & $a=0.059$, $b=4$, $a_f=2$, $b_f=4$, $K=100$ \\
+GOH              & Anisotropic & 5
+  & as HO $+\;\kappa=0.226$ \\
+\bottomrule
+\end{tabular}
+\end{table}

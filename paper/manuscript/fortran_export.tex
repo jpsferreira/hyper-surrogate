@@ -1,0 +1,132 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 5 — Fortran Export Pipeline
+% ══════════════════════════════════════════════════════════════════
+\section{Fortran export pipeline}
+\label{sec:fortran_export}
+
+A key contribution of this work is the automated export of trained neural
+networks into self-contained Fortran~90 subroutines that can be linked
+directly to commercial and research finite element solvers without any
+Python or PyTorch dependency at runtime.
+
+\subsection{Export strategy}
+\label{sec:fortran_export:strategy}
+
+We provide three export modes, targeting different use cases:
+
+\begin{enumerate}
+  \item \textbf{Standalone NN emitter} (\texttt{FortranEmitter}): Exports the
+    neural network forward pass as a pure Fortran~90 subroutine.  Weights and
+    biases are embedded as compile-time \texttt{PARAMETER} arrays.  This is
+    useful for evaluating the energy outside a FE context.
+
+  \item \textbf{Hybrid NN--UMAT emitter} (\texttt{HybridUMATEmitter}):
+    Produces a complete UMAT subroutine where the neural network evaluates
+    the strain energy function $\hat{\sef}$ and its first and second
+    derivatives with respect to invariants, while all kinematic quantities
+    (deformation tensors, invariant derivatives, push-forward to Cauchy
+    stress, Jaumann correction) are computed analytically in Fortran.
+
+  \item \textbf{Analytical UMAT emitter} (\texttt{UMATHandler}): Generates
+    fully symbolic Fortran code from the material model using SymPy common
+    subexpression elimination (CSE).  This serves as the reference
+    implementation for validation.
+\end{enumerate}
+
+\subsection{Hybrid NN--UMAT architecture}
+\label{sec:fortran_export:hybrid}
+
+The hybrid UMAT follows the computational flow shown in
+\Cref{fig:hybrid_umat}.  At each integration point, the solver provides the
+deformation gradient $\Fmat$.  The UMAT:
+
+\begin{enumerate}
+  \item Computes $\Cmat$, $J$, and invariants $\{I_\alpha\}$ analytically.
+  \item Normalizes invariants: $\hat{\tens{x}} = (\tens{x} - \bm{\mu}) / \bm{\sigma}$.
+  \item Evaluates the NN forward pass to obtain $\hat{\sef}$.
+  \item Backpropagates through the NN to obtain first derivatives
+    $\partial\hat{\sef}/\partial\hat{x}_\alpha$ and second derivatives
+    (Hessian) $\partial^2\hat{\sef}/\partial\hat{x}_\alpha\partial\hat{x}_\beta$.
+  \item Transforms to physical gradients:
+    $\partial\sef/\partial I_\alpha = (\partial\hat{\sef}/\partial\hat{x}_\alpha) / \sigma_\alpha$.
+  \item Assembles the second Piola--Kirchhoff stress $\Smat$ via
+    \Cref{eq:pk2_chain}.
+  \item Pushes forward to Cauchy stress:
+    $\sigmat = J^{-1}\Fmat\,\Smat\,\Fmat^T$.
+  \item Assembles the spatial tangent $\mathbb{c}$ and applies the Jaumann
+    correction for the Abaqus stress rate.
+\end{enumerate}
+
+The Hessian backpropagation through the NN layers is performed analytically in
+Fortran using the chain rule through each layer's activation, avoiding any
+need for an automatic differentiation library.
+
+% ── Hybrid UMAT diagram ──────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Replace with TikZ flowchart:
+%   DFGRD1(F) -> C, J, invariants -> normalize -> NN forward -> W
+%        -> NN backprop -> dW/dI, d2W/dIdJ
+%        -> analytical S = 2 sum dW/dI * dI/dC
+%        -> sigma = 1/J F S F^T
+%        -> tangent + Jaumann -> DDSDDE
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{5cm}
+  \textbf{[PLACEHOLDER]} \\[0.5em]
+  Hybrid NN--UMAT computational flow: \\
+  $\Fmat \to \Cmat, J, \{I_\alpha\}
+   \to \text{normalize} \to \text{NN}(\hat{\sef})
+   \to \text{backprop}(\partial\hat{\sef}/\partial I, \;
+     \partial^2\hat{\sef}/\partial I^2)$ \\
+  $\to \Smat = 2\sum \frac{\partial\sef}{\partial I_\alpha}
+     \frac{\partial I_\alpha}{\partial\Cmat}
+   \to \sigmat = J^{-1}\Fmat\Smat\Fmat^T
+   \to \text{DDSDDE}$
+\vspace{1cm}}}
+\caption{Computational flow of the hybrid NN--UMAT subroutine.  Blue blocks
+  are computed by the neural network; gray blocks are analytical Fortran.}
+\label{fig:hybrid_umat}
+\end{figure}
+
+\subsection{Fortran implementation details}
+\label{sec:fortran_export:details}
+
+\paragraph{Weight embedding.}
+All network weights and biases are written as Fortran \texttt{PARAMETER}
+arrays with 15-digit double-precision formatting (\texttt{:.15e}).  This
+avoids any file I/O at runtime and allows the compiler to optimize memory
+layout.
+
+\paragraph{Column-major storage.}
+Weight matrices follow Fortran's column-major convention.  The forward pass
+uses \texttt{MATMUL} intrinsics for matrix--vector products.
+
+\paragraph{Activation functions.}
+Each activation (softplus, tanh, sigmoid, ReLU) is implemented as an
+element-wise Fortran loop.  For softplus, a numerically stable form
+$\phi(x) = \log(1 + \exp(x))$ with overflow guards is used.
+
+\paragraph{Supported architectures.}
+The hybrid emitter supports MLP and PolyconvexICNN architectures.  For the
+polyconvex model, each branch is emitted as a separate forward pass, and
+the total energy is the sum of branch outputs.
+
+\paragraph{Isotropic and anisotropic support.}
+Isotropic UMATs use 3 invariant inputs ($\bar{I}_1, \bar{I}_2, J$);
+anisotropic UMATs accept 5 inputs ($\bar{I}_1, \bar{I}_2, J, I_4, I_5$)
+and include the fiber direction as a material constant.
+
+% ── Code snippet ──────────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Replace with actual Fortran snippet from exported UMAT
+%   showing the NN forward pass and stress assembly.
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{3cm}
+  \textbf{[PLACEHOLDER]} \\[0.5em]
+  Annotated Fortran~90 code excerpt from the hybrid NN--UMAT showing: \\
+  (1) invariant computation, (2) NN forward pass with embedded weights, \\
+  (3) backpropagation for $\partial\sef/\partial I$, (4) stress assembly.
+\vspace{1cm}}}
+\caption{Excerpt from an auto-generated hybrid NN--UMAT (Neo-Hookean, MLP
+  $64 \times 64$).}
+\label{fig:fortran_excerpt}
+\end{figure}

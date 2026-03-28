@@ -1,0 +1,91 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 1 — Introduction
+% ══════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:introduction}
+
+Nonlinear finite element simulations of soft materials require the repeated
+evaluation of constitutive relations --- strain energy functions (SEFs) and
+their derivatives --- at every integration point and every Newton iteration.
+For complex hyperelastic models, especially those involving fiber-reinforced
+anisotropy, the evaluation of stress tensors and consistent tangent operators
+constitutes a significant fraction of the total computational cost.  This
+bottleneck motivates the development of \emph{data-driven surrogates}: neural
+networks trained to approximate the constitutive response and deployable
+inside existing finite element solvers.
+
+\subsection{Related work}
+
+Early neural network surrogates for constitutive modeling employed standard
+feedforward networks trained on stress--strain data
+\cite{% TODO: Ghaboussi1991, Hashash2004, Lefik2003
+}.
+While effective for interpolation, unconstrained networks can violate
+fundamental thermodynamic requirements such as polyconvexity, objectivity, and
+the stress-free reference configuration, leading to non-physical predictions
+and convergence failures in implicit solvers.
+
+Physics-informed architectures address these limitations.  Input-convex neural
+networks (ICNNs) \cite{% TODO: Amos2017
+} guarantee convexity of the learned energy with respect to its inputs, a
+necessary condition for material stability.  Klein et al.~\cite{%
+TODO: Klein2022
+} demonstrated polyconvex ICNNs for hyperelasticity by decomposing the energy
+into convex functions of separate invariant groups.  Constitutive artificial
+neural networks (CANNs) \cite{% TODO: Linka2023
+} impose structure through predefined basis functions with learnable weights,
+enabling model discovery and interpretability.
+
+Despite these advances, several gaps remain:
+\begin{itemize}
+  \item \textbf{Systematic comparison.}  Most studies evaluate a single
+    architecture on one or two materials.  A fair comparison of MLP, ICNN,
+    and polyconvex ICNN across diverse isotropic and anisotropic materials
+    under identical training conditions is lacking.
+  \item \textbf{Energy-based training with stress accuracy.}  Training on
+    energy alone does not guarantee accurate stress predictions; training on
+    stress alone loses the energy potential.  The joint energy--stress loss via
+    automatic differentiation is underexplored for convexity-preserving
+    architectures.
+  \item \textbf{Deployment in production solvers.}  Trained models typically
+    remain in Python, disconnected from Fortran-based FE codes.  Automated
+    export of neural networks into standalone UMAT subroutines --- including
+    analytical stress and tangent computation --- has not been systematically
+    addressed.
+  \item \textbf{Finite element validation.}  End-to-end validation of
+    NN-based UMATs against analytical solutions in commercial solvers
+    (Abaqus) and research codes (FEAP) is rare.
+\end{itemize}
+
+\subsection{Contributions}
+
+This paper makes the following contributions:
+
+\begin{enumerate}
+  \item A systematic benchmark of three neural architectures (MLP, ICNN,
+    polyconvex ICNN) on five hyperelastic materials (three isotropic, two
+    anisotropic), using an energy--stress dual loss with automatic
+    differentiation (\Cref{sec:results}).
+  \item Scaling studies quantifying the effect of training set size and
+    network width on surrogate accuracy (\Cref{sec:results:scaling}).
+  \item An automated Fortran~90 export pipeline that emits self-contained
+    UMAT subroutines with embedded network weights, analytical kinematics,
+    and consistent tangent operators (\Cref{sec:fortran_export}).
+  \item Finite element validation of the exported hybrid NN--UMAT against
+    analytical UMATs in Abaqus and FEAP under uniaxial, biaxial, and shear
+    loading (\Cref{sec:fe_validation}).
+  \item An open-source Python library, \texttt{hyper-surrogate}, that
+    implements the entire pipeline from data generation to Fortran code
+    emission.
+\end{enumerate}
+
+\subsection{Outline}
+
+\Cref{sec:continuum} reviews the continuum mechanics framework and the
+material models considered.  \Cref{sec:architectures} describes the neural
+network architectures.  \Cref{sec:training} details the training procedure and
+the energy--stress loss.  \Cref{sec:fortran_export} presents the Fortran
+export pipeline.  \Cref{sec:results} reports benchmark results, and
+\Cref{sec:fe_validation} presents the finite element validation.
+\Cref{sec:discussion} discusses limitations and future directions, and
+\Cref{sec:conclusion} concludes the paper.
