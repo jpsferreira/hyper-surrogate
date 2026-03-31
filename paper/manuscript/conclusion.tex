@@ -1,0 +1,65 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 9 — Conclusion
+% ══════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper presented a systematic comparison of neural network surrogates for
+hyperelastic constitutive models, covering the full pipeline from synthetic
+data generation through physics-informed training to automated Fortran~90 code
+emission for finite element solvers.
+
+The main findings are:
+
+\begin{enumerate}
+  \item \textbf{Architecture comparison.}  The MLP, ICNN, and polyconvex ICNN
+    architectures all achieve high accuracy ($R^2 > $
+    % TODO: Insert minimum R^2 across all benchmarks.
+    \textbf{[XX]}) on five hyperelastic materials (three isotropic, two
+    anisotropic) when trained with the energy--stress dual loss.  The MLP
+    provides the best pointwise accuracy, while the ICNN and polyconvex
+    variants offer convexity and polyconvexity guarantees by construction.
+
+  \item \textbf{Energy--stress loss.}  The dual loss combining energy
+    regression with automatic-differentiation-based stress matching is
+    essential for accurate gradient predictions and is the only viable
+    training strategy for scalar-output architectures (ICNN, polyconvex).
+
+  \item \textbf{Scaling behavior.}  Surrogate accuracy saturates beyond
+    % TODO: Insert saturation threshold.
+    \textbf{[N]} training samples for the materials considered.  A hidden
+    layer width of 64 provides a good accuracy--cost balance for 3D isotropic
+    inputs.
+
+  \item \textbf{Fortran export.}  The hybrid NN--UMAT approach --- where the
+    neural network evaluates the strain energy while analytical Fortran code
+    computes kinematics, stress, and the consistent tangent --- produces
+    self-contained subroutines compatible with Abaqus and FEAP without any
+    Python runtime dependency.
+
+  \item \textbf{FE validation.}  Single-element tests confirm that the hybrid
+    NN--UMAT reproduces the analytical Cauchy stress to within
+    % TODO: Insert actual error bounds.
+    \textbf{[XX]\%} relative error and achieves quadratic Newton--Raphson
+    convergence, validating the consistent tangent implementation.
+\end{enumerate}
+
+The \texttt{hyper-surrogate} library is released as open-source software,
+providing the complete pipeline as a reusable tool for researchers and
+engineers.
+
+\subsection{Future work}
+
+Promising directions include:
+\begin{itemize}
+  \item Extension to multi-fiber anisotropic models (9D+ input) and
+    viscoelastic/damage formulations with internal state variables.
+  \item Adaptive training data generation guided by FE simulation error
+    indicators.
+  \item GPU-accelerated batch evaluation of NN-based constitutive models
+    across integration points.
+  \item Integration with automatic model selection to choose the optimal
+    architecture for a given material class.
+  \item Application to experimental data fitting, where the NN surrogate
+    replaces a parametric model entirely.
+\end{itemize}

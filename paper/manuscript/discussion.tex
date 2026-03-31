@@ -1,0 +1,114 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 8 — Discussion
+% ══════════════════════════════════════════════════════════════════
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Architecture trade-offs}
+\label{sec:discussion:tradeoffs}
+
+The benchmark results reveal a trade-off between thermodynamic guarantees and
+approximation flexibility:
+
+\begin{itemize}
+  \item \textbf{MLP} achieves the highest $R^2$ in most cases due to its
+    unconstrained weight space.  However, it offers no convexity guarantees,
+    which may lead to non-physical behavior outside the training domain and
+    convergence issues in implicit solvers.
+
+  \item \textbf{ICNN} guarantees convexity of the energy with respect to the
+    invariants, providing material stability by construction.  The
+    non-negative weight constraint and skip connections introduce some loss in
+    expressiveness, particularly for materials with non-monotonic
+    energy--invariant relationships.
+
+  \item \textbf{Polyconvex ICNN} provides the strongest thermodynamic
+    guarantee (polyconvexity) at the cost of further restricting the
+    approximation space.  The branch-wise decomposition limits cross-invariant
+    interactions, which may reduce accuracy for materials where the energy
+    depends on invariant products.
+\end{itemize}
+
+% TODO: Expand with specific observations from the benchmark data, e.g.:
+% - Which materials show the largest gap between MLP and ICNN?
+% - Does the polyconvex constraint matter for the materials tested?
+% - Are there cases where ICNN outperforms MLP (extrapolation)?
+
+\subsection{Energy--stress loss effectiveness}
+\label{sec:discussion:loss}
+
+The dual energy--stress loss (\Cref{eq:energy_stress_loss}) is critical for
+obtaining accurate stress predictions from energy-output architectures.
+Training on energy alone (setting $\beta = 0$) typically yields
+$R^2(\text{stress}) < 0.9$ even when $R^2(\text{energy}) > 0.99$, because
+small energy offsets do not penalize gradient errors.
+
+For the ICNN and polyconvex architectures, this loss formulation is the
+\emph{only} viable training strategy, since these models output a scalar
+energy and cannot be trained on stress targets directly.
+
+% TODO: Consider adding an ablation study (alpha/beta sweep) if space permits.
+
+\subsection{Anisotropic materials}
+\label{sec:discussion:anisotropic}
+
+Anisotropic materials (HO, GOH) present additional challenges:
+\begin{itemize}
+  \item \textbf{Exponential overflow:} The fiber terms involve
+    $\exp(b_f\langle I_4 - 1\rangle^2)$, which overflows for large stretches.
+    We mitigated this by using reduced parameters ($b_f = 4$ instead of the
+    original $b_f = 16.026$) and a tighter deformation range.
+  \item \textbf{Higher input dimension:} The 5D invariant input
+    ($\bar{I}_1, \bar{I}_2, J, I_4, I_5$) requires more training data and
+    larger networks for the same accuracy level.
+  \item \textbf{Data generation:} The standard \texttt{create\_datasets}
+    pipeline does not support anisotropic materials directly because the
+    symbolic SEF involves fiber pseudo-invariants.  We implemented a custom
+    pipeline using \texttt{sef\_from\_all\_invariants} with SymPy
+    lambdification.
+\end{itemize}
+
+% TODO: Discuss whether HO and GOH having the same 5D input but different
+% SEFs leads to measurable accuracy differences.
+
+\subsection{Fortran export considerations}
+\label{sec:discussion:fortran}
+
+The automated Fortran export eliminates the error-prone manual translation of
+NN weights into solver-compatible code.  Key observations:
+\begin{itemize}
+  \item The embedded-weight approach (compile-time \texttt{PARAMETER} arrays)
+    produces a single \texttt{.f90} file with no external dependencies,
+    simplifying deployment.
+  \item The analytical backpropagation for the Hessian (second derivatives) is
+    exact, ensuring quadratic convergence of Newton--Raphson iterations.
+  \item The Jaumann correction term in the tangent operator is essential for
+    Abaqus compatibility (which uses the Jaumann rate of Cauchy stress).
+\end{itemize}
+
+% TODO: Discuss code size, compile time, and runtime overhead of the generated
+% Fortran code versus the analytical UMAT.
+
+\subsection{Limitations}
+\label{sec:discussion:limitations}
+
+\begin{itemize}
+  \item \textbf{CANN excluded.}  The constitutive ANN architecture was
+    excluded from the general benchmarks because its exponential basis
+    functions ($\exp(b_k \xi^2)$) overflow with standardized inputs.
+    Material-specific tuning (see \texttt{examples/model\_discovery\_cann.py})
+    is required.
+  \item \textbf{Single fiber family.}  The current anisotropic benchmarks
+    consider only one fiber direction.  Extension to two-fiber models (e.g.,
+    \texttt{HolzapfelOgdenBiaxial}) increases the input dimension to 9 and
+    requires further investigation.
+  \item \textbf{Training data coverage.}  Synthetic deformation sampling may
+    not cover the full deformation space encountered in complex FE
+    simulations.  Adaptive sampling strategies could improve robustness.
+  \item \textbf{CPU-only timing.}  The inference speed comparison uses
+    single-threaded CPU evaluation.  GPU-accelerated inference or batched
+    evaluation across integration points is not considered.
+  \item \textbf{Single-element validation.}  The FE tests use a single
+    element under homogeneous deformation.  Multi-element benchmarks with
+    heterogeneous stress fields are left for future work.
+\end{itemize}

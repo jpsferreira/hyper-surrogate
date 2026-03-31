@@ -1,0 +1,225 @@
+% ══════════════════════════════════════════════════════════════════
+% Section 6 — Benchmark Results
+% ══════════════════════════════════════════════════════════════════
+\section{Benchmark results}
+\label{sec:results}
+
+All benchmarks were run using the scripts in \texttt{paper/run\_benchmarks.py}
+with 10\,000 training samples, 1000 epochs, and early stopping with
+patience~200.
+
+\subsection{Accuracy comparison}
+\label{sec:results:accuracy}
+
+\Cref{tab:accuracy} reports the coefficient of determination ($R^2$) for
+energy and stress (invariant gradients) across all material--architecture
+combinations.
+
+% ── Main accuracy table ───────────────────────────────────────────
+\begin{table}[htbp]
+\centering
+\caption{Surrogate accuracy ($R^2$) for energy and stress predictions.  Best
+  result per material in \textbf{bold}.}
+\label{tab:accuracy}
+% TODO: Replace with actual results from results/benchmarks.tex or
+%   auto-generated LaTeX table.
+\begin{tabular}{@{}ll S[table-format=1.4] S[table-format=1.4] r r@{}}
+\toprule
+\textbf{Material} & \textbf{Model}
+  & {$R^2$ (energy)} & {$R^2$ (stress)}
+  & {\textbf{Params}} & {\textbf{Time (s)}} \\
+\midrule
+\multirow{3}{*}{Neo-Hookean}
+  & MLP-64x64       & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & ICNN-64x64      & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & Polyconvex-64x64& {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+\midrule
+\multirow{3}{*}{Mooney--Rivlin}
+  & MLP-64x64       & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & ICNN-64x64      & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & Polyconvex-64x64& {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+\midrule
+\multirow{3}{*}{Yeoh}
+  & MLP-64x64       & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & ICNN-64x64      & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & Polyconvex-64x64& {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+\midrule
+\multirow{2}{*}{Holzapfel--Ogden}
+  & MLP-64x64       & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & ICNN-64x64      & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+\midrule
+\multirow{2}{*}{GOH}
+  & MLP-64x64       & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+  & ICNN-64x64      & {[X.XXXX]} & {[X.XXXX]} & {[N]} & {[T]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ── Accuracy bar charts ──────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+  % TODO: Include figures/accuracy_comparison_energy.pdf
+  \fbox{\parbox{\textwidth}{\centering\vspace{4cm}
+    \textbf{[PLACEHOLDER]} \\
+    \texttt{figures/accuracy\_comparison\_energy.pdf}
+  \vspace{1cm}}}
+  \caption{$R^2$ for energy prediction.}
+  \label{fig:accuracy_energy}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+  % TODO: Include figures/accuracy_comparison_stress.pdf
+  \fbox{\parbox{\textwidth}{\centering\vspace{4cm}
+    \textbf{[PLACEHOLDER]} \\
+    \texttt{figures/accuracy\_comparison\_stress.pdf}
+  \vspace{1cm}}}
+  \caption{$R^2$ for stress (invariant gradient) prediction.}
+  \label{fig:accuracy_stress}
+\end{subfigure}
+\caption{Accuracy comparison across materials and architectures.}
+\label{fig:accuracy_comparison}
+\end{figure}
+
+\subsection{Convergence behavior}
+\label{sec:results:convergence}
+
+\Cref{fig:convergence} shows the validation loss during training for all
+material--model combinations.
+
+% ── Convergence curves ────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/convergence_curves.pdf
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{5cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/convergence\_curves.pdf} \\[0.5em]
+  Grid of validation loss curves (log scale) for each material, with one
+  curve per architecture.  Shows convergence speed differences between MLP,
+  ICNN, and Polyconvex.
+\vspace{1cm}}}
+\caption{Validation loss convergence for all material--architecture
+  combinations.  The ICNN and polyconvex models typically require more
+  epochs to converge due to constrained weight updates.}
+\label{fig:convergence}
+\end{figure}
+
+\subsection{Stress prediction quality}
+\label{sec:results:stress}
+
+To assess the quality of stress predictions derived from the energy surrogate
+via automatic differentiation, \Cref{fig:stress_scatter} shows scatter plots
+of predicted versus analytical invariant gradients $\partial\sef/\partial
+I_\alpha$ on the validation set for the Neo-Hookean material.
+
+% ── Stress scatter ────────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/stress_scatter.pdf
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{4.5cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/stress\_scatter.pdf} \\[0.5em]
+  Predicted vs.\ analytical $\partial\sef/\partial I_\alpha$ for MLP and
+  ICNN on Neo-Hookean.  Points color-coded by invariant component
+  ($\partial W/\partial I_1$, $\partial W/\partial I_2$, $\partial W/\partial J$).
+  Ideal predictions lie on the diagonal.
+\vspace{1cm}}}
+\caption{Predicted versus analytical invariant gradients (Neo-Hookean,
+  validation set).  Both MLP and ICNN achieve tight clustering around the
+  identity line.}
+\label{fig:stress_scatter}
+\end{figure}
+
+\subsection{Error distribution}
+\label{sec:results:error}
+
+\Cref{fig:error_dist} shows the distribution of pointwise relative errors
+for the invariant gradients.
+
+% ── Error distribution ────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/error_distribution.pdf
+\fbox{\parbox{0.7\textwidth}{\centering\vspace{4cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/error\_distribution.pdf} \\[0.5em]
+  Histogram of relative errors in $\partial\sef/\partial I_\alpha$ for MLP
+  and ICNN.  Legend shows median relative error per architecture.
+\vspace{1cm}}}
+\caption{Distribution of relative errors in invariant gradient predictions
+  (Neo-Hookean, validation set).}
+\label{fig:error_dist}
+\end{figure}
+
+\subsection{Scaling studies}
+\label{sec:results:scaling}
+
+We investigate how surrogate accuracy depends on the training set size and
+network capacity.
+
+\subsubsection{Training set size}
+
+\Cref{fig:scaling_samples} shows the stress $R^2$ as a function of the number
+of training samples for a fixed MLP-$64\times64$ architecture on Neo-Hookean.
+
+% ── Scaling: samples ──────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/scaling_samples.pdf
+\fbox{\parbox{0.6\textwidth}{\centering\vspace{4cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/scaling\_samples.pdf} \\[0.5em]
+  Semi-log plot of $R^2$(stress) vs.\ number of training samples.
+  Shows diminishing returns beyond a threshold.
+\vspace{1cm}}}
+\caption{Surrogate accuracy versus training set size (MLP-$64\times64$,
+  Neo-Hookean).}
+\label{fig:scaling_samples}
+\end{figure}
+
+\subsubsection{Network width}
+
+\Cref{fig:scaling_width} shows the accuracy and parameter count as the hidden
+layer width varies from 16 to 256.
+
+% ── Scaling: width ────────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/scaling_width.pdf
+\fbox{\parbox{0.6\textwidth}{\centering\vspace{4cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/scaling\_width.pdf} \\[0.5em]
+  Dual-axis plot: $R^2$(stress) on left axis, parameter count (bar) on
+  right axis, versus hidden layer width.
+\vspace{1cm}}}
+\caption{Surrogate accuracy versus network width (Neo-Hookean).  The bar
+  chart shows the corresponding number of trainable parameters.}
+\label{fig:scaling_width}
+\end{figure}
+
+\subsection{Inference speed}
+\label{sec:results:timing}
+
+\Cref{fig:timing} compares the wall-clock time for evaluating the stress
+tensor at
+% TODO: Insert actual n_eval from timing.json
+\textbf{[N]} integration points using the analytical material model versus
+the trained MLP surrogate (CPU, single-threaded).
+
+% ── Timing bar chart ─────────────────────────────────────────────
+\begin{figure}[htbp]
+\centering
+% TODO: Include figures/timing_bar.pdf
+\fbox{\parbox{0.5\textwidth}{\centering\vspace{4cm}
+  \textbf{[PLACEHOLDER]} \\
+  \texttt{figures/timing\_bar.pdf} \\[0.5em]
+  Bar chart comparing analytical vs.\ NN inference time (ms).
+  Annotated with speedup factor.
+\vspace{1cm}}}
+\caption{Inference time comparison between the analytical Neo-Hookean model
+  and the MLP-$64\times64$ surrogate.  Error bars show standard deviation
+  over
+  % TODO: Insert n_repeats.
+  \textbf{[N]} repetitions.}
+\label{fig:timing}
+\end{figure}

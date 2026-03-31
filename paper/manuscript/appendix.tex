@@ -1,0 +1,79 @@
+% ══════════════════════════════════════════════════════════════════
+% Appendix
+% ══════════════════════════════════════════════════════════════════
+
+\section{Invariant derivatives}
+\label{app:invariant_derivatives}
+
+The derivatives of the isochoric invariants with respect to the right
+Cauchy--Green tensor $\Cmat$ are:
+\begin{align}
+  \pd{\bar{I}_1}{\Cmat} &= J^{-2/3}\Bigl(\mat{I}
+    - \tfrac{1}{3}\bar{I}_1\,\Cmat^{-1}\Bigr), \\
+  \pd{\bar{I}_2}{\Cmat} &= J^{-4/3}\Bigl(\bar{I}_1\,\mat{I}
+    - \bar{\Cmat} - \tfrac{2}{3}\bar{I}_2\,\Cmat^{-1}\Bigr), \\
+  \pd{J}{\Cmat} &= \tfrac{1}{2}J\,\Cmat^{-1}.
+\end{align}
+For the fiber pseudo-invariants ($\tens{a}_0 \otimes \tens{a}_0 \equiv
+\mat{A}_0$):
+\begin{align}
+  \pd{I_4}{\Cmat} &= \mat{A}_0, \\
+  \pd{I_5}{\Cmat} &= \mat{A}_0\,\Cmat + \Cmat\,\mat{A}_0.
+\end{align}
+
+These derivatives are used in the hybrid NN--UMAT to assemble the second
+Piola--Kirchhoff stress from the NN-predicted invariant gradients
+(\Cref{eq:pk2_chain}).
+
+\section{Hessian backpropagation through neural network layers}
+\label{app:hessian_backprop}
+
+For the consistent tangent operator, the hybrid UMAT requires second
+derivatives of the strain energy with respect to invariants:
+\begin{equation}
+  H_{\alpha\beta} = \frac{\partial^2 \hat{\sef}}
+    {\partial I_\alpha \, \partial I_\beta}.
+\end{equation}
+
+For a network with layers $\tens{z}^{(\ell)} = \phi(\mat{W}^{(\ell)}
+\tens{z}^{(\ell-1)} + \tens{b}^{(\ell)})$, the Hessian is propagated
+backwards through each layer using:
+\begin{align}
+  \tens{g}^{(\ell-1)} &= (\mat{W}^{(\ell)})^T
+    \bigl(\phi'(\tens{a}^{(\ell)}) \odot \tens{g}^{(\ell)}\bigr), \\
+  \mat{H}^{(\ell-1)} &= (\mat{W}^{(\ell)})^T
+    \bigl[\phi'(\tens{a}^{(\ell)}) \odot \mat{H}^{(\ell)}
+    + \phi''(\tens{a}^{(\ell)}) \odot
+      (\tens{g}^{(\ell)} \tens{g}^{(\ell)T})\bigr]\,\mat{W}^{(\ell)},
+\end{align}
+where $\tens{a}^{(\ell)} = \mat{W}^{(\ell)}\tens{z}^{(\ell-1)} +
+\tens{b}^{(\ell)}$ is the pre-activation, and $\phi'$, $\phi''$ are the first
+and second derivatives of the activation function.
+
+For softplus: $\phi'(x) = \sigma(x) = 1/(1+e^{-x})$ and
+$\phi''(x) = \sigma(x)(1 - \sigma(x))$.
+
+This analytical backpropagation is implemented in the generated Fortran code,
+avoiding any dependency on automatic differentiation at runtime.
+
+\section{Reproducing the results}
+\label{app:reproduction}
+
+All results in this paper can be reproduced using the scripts in the
+\texttt{paper/} directory of the \texttt{hyper-surrogate} repository:
+
+\begin{enumerate}
+  \item Install dependencies:
+    \texttt{uv sync --all-groups --extra ml}
+  \item Run benchmarks:
+    \texttt{uv run python paper/run\_benchmarks.py}
+  \item Generate figures:
+    \texttt{uv run python paper/generate\_figures.py}
+  \item Generate FE input files:
+    \texttt{uv run python paper/fe\_validation.py}
+  \item Run Abaqus/FEAP simulations (external).
+  \item Plot FE results:
+    \texttt{uv run python paper/plot\_fe\_results.py}
+\end{enumerate}
+
+% TODO: Add DOI or repository URL when available.

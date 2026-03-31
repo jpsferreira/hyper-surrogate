@@ -1,0 +1,33 @@
+% ══════════════════════════════════════════════════════════════════
+% Abstract
+% ══════════════════════════════════════════════════════════════════
+
+Neural network surrogates for hyperelastic strain energy functions offer a
+promising path toward accelerating nonlinear finite element simulations, yet
+practical deployment remains hindered by (i) the lack of systematic comparisons
+across network architectures and material classes, (ii) the gap between
+Python-trained models and production Fortran solvers, and (iii) insufficient
+validation against reference finite element solutions.  This work addresses all
+three challenges through \texttt{hyper-surrogate}, an open-source framework
+that provides a complete pipeline from data generation through training to
+Fortran~90 code emission.
+
+We benchmark three neural architectures --- multilayer perceptron (MLP),
+input-convex neural network (ICNN), and polyconvex ICNN --- on five
+hyperelastic materials spanning isotropic (Neo-Hookean, Mooney--Rivlin, Yeoh)
+and anisotropic fiber-reinforced (Holzapfel--Ogden, Gasser--Ogden--Holzapfel)
+formulations.  All models are trained with a physics-informed loss that
+simultaneously matches strain energy and its invariant gradients via automatic
+differentiation.  Accuracy, convergence, data efficiency, and inference speed
+are compared quantitatively.
+
+The trained networks are exported as self-contained Fortran~90 UMAT
+subroutines, where the neural network evaluates the strain energy while
+analytical kinematics compute stress and the consistent tangent operator.
+Single-element finite element tests in Abaqus and FEAP demonstrate that the
+hybrid NN--UMAT reproduces analytical Cauchy stress to within
+% TODO: Insert actual tolerance from FE results.
+\textbf{[XX]\%} relative error under uniaxial, biaxial, and shear loading.
+
+% TODO: Add key quantitative results (best R^2, speedup factor, etc.)
+% once benchmarks are finalized.
