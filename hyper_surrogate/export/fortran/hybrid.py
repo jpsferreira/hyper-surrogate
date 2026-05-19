@@ -268,6 +268,10 @@ class HybridUMATEmitter:
 
         # Reference-configuration offset for the polyconvex (sum-of-branches) emitter.
         lines.append("DOUBLE PRECISION, PARAMETER :: W_REF_OFFSET = " + f"{self._W_ref:.15e}".replace("e", "d"))
+        # Reference-configuration gradient: ensures sigma(C=I) = 0 exactly
+        # at deployment.  Mask zeroes out deviatoric invariants whose
+        # dI/dC vanishes at reference anyway (see _compute_reference_gradient).
+        lines.append(self._fmt_1d(self._dW_dI_ref, "dW_dI_REF"))
 
         return "\n".join(lines)
 

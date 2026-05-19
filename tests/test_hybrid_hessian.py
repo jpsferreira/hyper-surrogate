@@ -559,6 +559,35 @@ def test_reference_gradient_makes_stress_zero_at_C_eq_I():
     np.testing.assert_array_equal(emitter_off._dW_dI_ref, np.zeros(in_dim))
 
 
+def test_polyconvex_emits_dW_dI_REF_inside_module():
+    """Polyconvex emitter declares dW_dI_REF inside the nn_sef module so
+    that the subsequent `dW_dI(k) = dW_dI(k) - dW_dI_REF(k)` lines (also
+    emitted inside the module's nn_eval body) reference an in-scope
+    PARAMETER.  Regression for an emitter bug where the MLP variant of
+    `_emit_..._nn_parameters` declared dW_dI_REF but the polyconvex
+    variant did not, causing gfortran to error with
+    `Function 'dw_di_ref' has no IMPLICIT type` on the subtraction lines.
+    """
+    rng = np.random.default_rng(0)
+    in_norm = Normalizer().fit(rng.standard_normal((50, 3)))
+    energy_norm = Normalizer().fit(rng.standard_normal((50, 1)))
+    poly = PolyconvexICNN(groups=[[0], [1], [2]], hidden_dims=[4, 4], activation="softplus")
+    exported = extract_weights(poly, in_norm, energy_norm)
+    emitter = HybridUMATEmitter(exported, enforce_stress_free_reference=True)
+    code = emitter.emit()
+
+    # Locate the nn_sef module boundary and the subtraction lines.
+    lines = code.splitlines()
+    mod_start = next(i for i, ln in enumerate(lines) if ln.strip().startswith("MODULE nn_sef"))
+    mod_end = next(i for i, ln in enumerate(lines) if ln.strip().startswith("END MODULE nn_sef"))
+    decl = next(i for i, ln in enumerate(lines) if "PARAMETER :: dW_dI_REF" in ln)
+    subs = [i for i, ln in enumerate(lines) if "dW_dI(1) = dW_dI(1) - dW_dI_REF(1)" in ln]
+    assert subs, "polyconvex emitter must emit dW_dI(k) - dW_dI_REF(k) lines"
+    assert mod_start < decl < mod_end, "dW_dI_REF declaration must be inside MODULE nn_sef"
+    for s in subs:
+        assert mod_start < s < mod_end, "dW_dI_REF subtraction must be inside MODULE nn_sef"
+
+
 def test_generated_fortran_has_d2act_no_eps_fd():
     """Generated Fortran should contain d2act but not eps_fd."""
     model, in_norm, energy_norm = _make_model(activation="softplus")
