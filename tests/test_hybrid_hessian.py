@@ -323,6 +323,105 @@ def _polyconvex_emitter_hessian(model, in_norm, energy_norm, x_raw):
     return d2W_dI2
 
 
+def _polyconvex_emitter_gradient(model, in_norm, energy_norm, x_raw):
+    """Mirror hybrid.py:_emit_poly_nn_forward_and_backward GRADIENT path in numpy.
+    This is the regression guard for the ICNN skip-connection backward bug
+    (Fortran was previously omitting wx_l^T·delta_l for l>=1, producing a
+    non-zero residual gradient that surfaced in Abaqus as a several-MPa
+    spurious hydrostatic stress).
+    """
+    exported = extract_weights(model, in_norm, energy_norm)
+    weights = exported.weights
+    branches = exported.metadata["branches"]
+    in_std = exported.input_normalizer["std"]
+    in_mean = exported.input_normalizer["mean"]
+    x_norm = (x_raw - in_mean) / in_std
+
+    def _softplus(w):
+        return np.log(1.0 + np.exp(w))
+
+    dW_dI = np.zeros_like(x_raw)
+    for bi, branch in enumerate(branches):
+        b_layers = branch["layers"]
+        indices = branch["input_indices"]
+        n_hidden = len(b_layers) - 1
+        prefix = f"branches.{bi}."
+        xb = x_norm[indices]
+
+        # Forward (softplus weights on hidden+output, raw wx skips)
+        W0 = weights[b_layers[0]["weights"]]
+        b0 = weights[b_layers[0]["bias"]]
+        a0 = W0 @ xb + b0
+        a_arr = [a0]
+        z_arr = [_softplus(a0)]
+        dact_arr = [1.0 / (1.0 + np.exp(-a0))]
+        for li in range(1, n_hidden):
+            wz = _softplus(weights[b_layers[li]["weights"]])
+            wx = weights[prefix + f"wx_layers.{li}.weight"]
+            bli = weights[b_layers[li]["bias"]]
+            ali = wz @ z_arr[li - 1] + wx @ xb + bli
+            a_arr.append(ali)
+            z_arr.append(_softplus(ali))
+            dact_arr.append(1.0 / (1.0 + np.exp(-ali)))
+        wz_out = _softplus(weights[b_layers[n_hidden]["weights"]])
+        wxf = weights[prefix + "wx_final.weight"]
+
+        # Backward — propagate deltas
+        last_h = n_hidden - 1
+        deltas = [None] * n_hidden
+        deltas[last_h] = wz_out[0, :] * dact_arr[last_h]
+        for li in range(last_h - 1, -1, -1):
+            wz_next = _softplus(weights[b_layers[li + 1]["weights"]])
+            deltas[li] = (wz_next.T @ deltas[li + 1]) * dact_arr[li]
+
+        # Gradient w.r.t. branch input: wxf + W0^T·δ_0 + Σ_{l≥1} wx_l^T·δ_l
+        grad = wxf.flatten() + W0.T @ deltas[0]
+        for li in range(1, n_hidden):
+            wx = weights[prefix + f"wx_layers.{li}.weight"]
+            grad = grad + wx.T @ deltas[li]
+
+        # Scatter, undoing the input normalization
+        for si, idx in enumerate(indices):
+            dW_dI[idx] += grad[si] / in_std[idx]
+    return dW_dI
+
+
+def _pytorch_polyconvex_gradient(model, in_norm, x_raw):
+    model.eval()
+    std = torch.tensor(in_norm.params["std"], dtype=torch.float32)
+    mean = torch.tensor(in_norm.params["mean"], dtype=torch.float32)
+    x = torch.tensor(x_raw, dtype=torch.float32, requires_grad=True)
+    W = model(((x - mean) / std).unsqueeze(0)).squeeze()
+    g = torch.autograd.grad(W, x)[0]
+    return g.detach().numpy()
+
+
+@pytest.mark.parametrize(
+    "groups",
+    [
+        [[0], [1], [2]],
+        [[0], [1], [2], [3, 4]],
+    ],
+)
+def test_polyconvex_emitter_gradient_matches_pytorch(groups):
+    """Emitter's GRADIENT path (not just Hessian) must match autograd.
+
+    Regression: the .f90 backward was missing wx_l^T·delta_l for l>=1,
+    producing a non-zero residual gradient that an Abaqus run surfaced
+    as a ~7 MPa spurious hydrostatic Cauchy stress at C=I.  See Lesson 9
+    in tasks/lessons.md.
+    """
+    model, in_norm, energy_norm = _make_polyconvex_model(groups, hidden_dims=[8, 8])
+    in_dim = max(idx for g in groups for idx in g) + 1
+    rng = np.random.default_rng(456)
+    x_raw = rng.standard_normal(in_dim).astype(np.float64)
+
+    g_torch = _pytorch_polyconvex_gradient(model, in_norm, x_raw)
+    g_emit = _polyconvex_emitter_gradient(model, in_norm, energy_norm, x_raw)
+
+    np.testing.assert_allclose(g_emit, g_torch, atol=1e-5, rtol=1e-4)
+
+
 @pytest.mark.parametrize(
     "groups",
     [
@@ -586,6 +685,33 @@ def test_polyconvex_emits_dW_dI_REF_inside_module():
     assert mod_start < decl < mod_end, "dW_dI_REF declaration must be inside MODULE nn_sef"
     for s in subs:
         assert mod_start < s < mod_end, "dW_dI_REF subtraction must be inside MODULE nn_sef"
+
+
+def test_polyconvex_emits_wx_skip_grad_contributions_in_backward():
+    """The polyconvex backward pass must include the ICNN skip-connection
+    gradient contributions `wx_b{bi}_{li}(jj, ii) * delta_b{bi}_{li}(jj)`
+    for every hidden layer l >= 1.  Without these, the emitted dW/dI is
+    incomplete and produces a non-zero residual at the reference -- which
+    surfaced in Abaqus as a multi-MPa spurious hydrostatic Cauchy stress
+    on the J branch (Sep 2026 incident; see tasks/lessons.md Lesson 9).
+    """
+    poly = PolyconvexICNN(groups=[[0], [1], [2]], hidden_dims=[4, 4, 4], activation="softplus")
+    rng = np.random.default_rng(0)
+    in_norm = Normalizer().fit(rng.standard_normal((50, 3)))
+    energy_norm = Normalizer().fit(rng.standard_normal((50, 1)))
+    exported = extract_weights(poly, in_norm, energy_norm)
+    code = HybridUMATEmitter(exported, enforce_stress_free_reference=True).emit()
+
+    # With hidden_dims=[4,4,4], n_hidden=3 so wx skip exists at li=1 and li=2.
+    # Each branch (3 branches in groups [[0],[1],[2]]) must emit two
+    # gradient-accumulation lines: wx_b{bi}_1·delta and wx_b{bi}_2·delta.
+    for bi in range(3):
+        for li in (1, 2):
+            needle = f"grad_b{bi}(ii) = grad_b{bi}(ii) + wx_b{bi}_{li}(jj, ii) * delta_b{bi}_{li}(jj)"
+            assert needle in code, (
+                f"polyconvex emitter must accumulate wx_b{bi}_{li}^T·delta_{li} into grad_b{bi}; "
+                f"missing line: {needle!r}"
+            )
 
 
 def test_generated_fortran_has_d2act_no_eps_fd():

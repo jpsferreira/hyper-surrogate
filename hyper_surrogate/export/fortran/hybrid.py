@@ -678,12 +678,20 @@ class HybridUMATEmitter:
                 lines.append(f"  delta_b{bi}_{li}(ii) = delta_b{bi}_{li}(ii) * dact_b{bi}_{li}(ii)")
                 lines.append("END DO")
 
-            # grad_b = W0^T * delta_0 + wx_final^T
+            # grad_b = wx_final^T + W0^T·delta_0 + sum_l wx_l^T·delta_l   (l = 1..n_hidden-1)
+            # The last term — ICNN per-layer skip connections — was previously omitted
+            # and produced a non-zero residual gradient at the reference, which manifested
+            # in Abaqus as a several-MPa spurious hydrostatic stress on the J branch.
             lines.append(f"DO ii = 1, {b_in}")
             lines.append(f"  grad_b{bi}(ii) = wxf_b{bi}(1, ii)")
             lines.append(f"  DO jj = 1, {hd0}")
             lines.append(f"    grad_b{bi}(ii) = grad_b{bi}(ii) + w_b{bi}_0(jj, ii) * delta_b{bi}_0(jj)")
             lines.append("  END DO")
+            for li in range(1, n_hidden):
+                hd_l = weights[b_layers[li]["weights"]].shape[0]
+                lines.append(f"  DO jj = 1, {hd_l}")
+                lines.append(f"    grad_b{bi}(ii) = grad_b{bi}(ii) + wx_b{bi}_{li}(jj, ii) * delta_b{bi}_{li}(jj)")
+                lines.append("  END DO")
             lines.append("END DO")
             lines.append("")
 
