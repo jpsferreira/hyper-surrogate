@@ -147,7 +147,7 @@ class HybridUMATEmitter:
         branches = self.exported.metadata["branches"]
 
         def _softplus(w: np.ndarray) -> np.ndarray:
-            return np.log1p(np.exp(w))
+            return np.log1p(np.exp(w))  # type: ignore[no-any-return]
 
         total = 0.0
         for bi, branch in enumerate(branches):

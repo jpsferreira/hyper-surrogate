@@ -122,7 +122,7 @@ class DeformationGenerator:
         """
         j = self._rng.uniform(*j_range, size=n)
         s = j ** (1.0 / 3.0)
-        return np.einsum("n,ij->nij", s, np.eye(3))
+        return np.einsum("n,ij->nij", s, np.eye(3))  # type: ignore[no-any-return]
 
     def combined_compressible(
         self,
