@@ -5,7 +5,7 @@
 [![codecov](https://codecov.io/gh/jpsferreira/hyper-surrogate/branch/main/graph/badge.svg)](https://codecov.io/gh/jpsferreira/hyper-surrogate)
 [![License](https://img.shields.io/github/license/jpsferreira/hyper-surrogate)](https://img.shields.io/github/license/jpsferreira/hyper-surrogate)
 
-Data-driven surrogates for hyperelastic constitutive models in finite element analysis.
+**Define hyperelastic materials in Python, deploy them in your finite element solver.**
 
 - **Github repository**: <https://github.com/jpsferreira/hyper-surrogate/>
 - **Documentation**: <https://jpsferreira.github.io/hyper-surrogate/>
@@ -22,83 +22,121 @@ Data-driven surrogates for hyperelastic constitutive models in finite element an
 
 ## Why hyper-surrogate?
 
-Finite element solvers need constitutive models (stress-strain relationships) to simulate materials. Writing and maintaining these models — especially user-defined material subroutines (UMATs) for Abaqus/LS-DYNA — is tedious, error-prone, and tightly coupled to the solver.
+Finite element solvers need constitutive models. Writing and maintaining
+those models — especially user-material subroutines for Abaqus, FEAP and
+similar Fortran-based solvers — is repetitive: kinematics, second
+Piola–Kirchhoff stress, consistent tangent, Jaumann correction,
+reference-configuration freedom, all in Fortran 77 or 90.
 
-**hyper-surrogate** provides an end-to-end pipeline that:
+**hyper-surrogate** lets you define your material once in Python and
+emit a self-contained Fortran 90 user subroutine deployable in any
+Fortran-based FE solver. You choose how the material is defined:
 
-1. **Generates training data** from symbolic material definitions (NeoHooke, Mooney-Rivlin, etc.)
-2. **Trains neural network surrogates** (MLP or Input-Convex NN) that learn the strain energy function
-3. **Exports to standalone Fortran 90** with baked-in weights — no Python or external dependencies at runtime
+1. **Built-in symbolic SEF** — one of ten classical isotropic and
+   anisotropic models (Neo-Hooke, Mooney-Rivlin, Yeoh, Holzapfel-Ogden,
+   Gasser-Ogden-Holzapfel, …).
+2. **Custom symbolic SEF** — subclass `Material` with a `sef` property
+   in `SymPy` and the framework derives stress and tangent automatically.
+3. **Data-driven surrogate** — train an MLP, ICNN, or polyconvex ICNN
+   on energy and stress samples from any ground-truth source and emit
+   a hybrid UMAT whose energy is the trained network and whose stress
+   and tangent are computed analytically in Fortran.
 
-This gives you **solver portability** (one training, any Fortran-capable solver), **thermodynamic consistency** (energy-based formulation with automatic stress/tangent derivation), and **speed** (the exported Fortran is a pure forward pass).
+All three paths produce the same artefact: a `.f90` with Cauchy stress,
+analytical consistent tangent, and stress-freedom at the reference
+configuration enforced exactly at emission time. No Python runtime
+is required at solve time.
 
 ## Architecture
 
 ```
-Material ─> DeformationGenerator ─> Dataset ─> MLP / ICNN ─> FortranEmitter ─> .f90
+Material ─> DeformationGenerator ─> Dataset ─> MLP / ICNN ─> HybridUMATEmitter ─> .f90
    │                                              │
    │         (symbolic SEF)                        │  (trained NN weights)
    │                                              │
    └──── UMATHandler ─────────────────────────────┘
-         (analytical Fortran via SymPy CSE)     HybridUMATEmitter
-                                                (NN SEF + analytical mechanics)
+         (analytical Fortran via SymPy CSE)
 ```
 
 ## Features
 
-- **Symbolic mechanics** -- Automatic PK2 stress and stiffness tensor derivation via SymPy
-- **ML surrogates** -- MLP and Input-Convex Neural Network (ICNN) models for constitutive response approximation
-- **Hybrid UMAT** -- NN-based strain energy with analytical kinematics, stress push-forward, and tangent computation
-- **Energy-stress loss** -- Joint energy + stress gradient loss for thermodynamic consistency via autograd
-- **ICNN convexity** -- Input-Convex Neural Networks guarantee convexity of the predicted strain energy
-- **Fortran export** -- Transpile trained models to standalone Fortran 90 subroutines with baked-in weights
-- **Analytical UMAT** -- Generate optimized Fortran UMAT subroutines from symbolic expressions via CSE
+- **Three entry points, one output** — built-in SEF, custom SymPy SEF,
+  or trained surrogate, all emit a structurally identical Fortran UMAT.
+- **Symbolic mechanics** — automatic PK2 stress and stiffness tensor
+  derivation via SymPy; analytical Cauchy push-forward and Jaumann
+  correction emitted with common-subexpression elimination.
+- **NN architectures** — MLP, Input-Convex NN, and polyconvex ICNN,
+  trained with an energy-plus-stress dual loss that backpropagates
+  the gradient target through autograd.
+- **Hybrid UMAT** — neural-network strain energy with closed-form
+  analytical kinematics, stress, and consistent tangent in Fortran;
+  layer-additive Hessian backpropagation verified against autograd
+  at $10^{-5}$ tolerance.
+- **Stress freedom at reference** — enforced exactly at emission time
+  by subtracting a compile-time offset; no surprise residual stress
+  at $\mathbf{C} = \mathbf{I}$.
+- **Anisotropic support** — fiber pseudo-invariants $I_4, I_5$ for one
+  or two fiber families with arbitrary orientations.
 
 ## Quick Start
 
-### MLP surrogate (stress-based)
+Three short pipelines, mirroring the three ways to define a material:
+
+### Path A — built-in symbolic SEF
 
 ```python
-import hyper_surrogate as hs
+from hyper_surrogate import NeoHooke, UMATHandler
 
-# Define material and generate training data
-material = hs.NeoHooke({"C10": 0.5, "KBULK": 1000.0})
-train_ds, val_ds, in_norm, out_norm = hs.create_datasets(
-    material, n_samples=5000, input_type="invariants", target_type="pk2_voigt",
-)
-
-# Train an MLP surrogate
-model = hs.MLP(input_dim=3, output_dim=6, hidden_dims=[32, 32], activation="tanh")
-result = hs.Trainer(model, train_ds, val_ds, loss_fn=hs.StressLoss(), max_epochs=500).fit()
-
-# Export to Fortran 90
-exported = hs.extract_weights(result.model, in_norm, out_norm)
-hs.FortranEmitter(exported).write("nn_surrogate.f90")
+UMATHandler(NeoHooke({"C10": 0.5, "KBULK": 1000.0})).generate("neohooke.f90")
 ```
 
-### ICNN surrogate (energy-based)
+### Path B — custom user-defined SEF
 
 ```python
-import hyper_surrogate as hs
+import sympy as sp
+from hyper_surrogate import Material, UMATHandler
 
-material = hs.NeoHooke({"C10": 0.5, "KBULK": 1000.0})
-train_ds, val_ds, in_norm, out_norm = hs.create_datasets(
-    material, n_samples=5000, input_type="invariants", target_type="energy",
-)
+class MyOgdenLike(Material):
+    DEFAULT_PARAMS = {"mu": 1.0, "alpha": 2.0, "KBULK": 1000.0}
 
-# ICNN guarantees convexity of the predicted strain energy
-model = hs.ICNN(input_dim=3, hidden_dims=[32, 32])
-result = hs.Trainer(
-    model, train_ds, val_ds,
-    loss_fn=hs.EnergyStressLoss(alpha=1.0, beta=1.0),
-    max_epochs=500,
-).fit()
+    def __init__(self, parameters=None):
+        super().__init__({**self.DEFAULT_PARAMS, **(parameters or {})})
 
-exported = hs.extract_weights(result.model, in_norm, out_norm)
-exported.save("icnn_surrogate.npz")
+    @property
+    def sef(self):
+        h = self._handler
+        mu, alpha, K = (self._symbols[k] for k in ("mu", "alpha", "KBULK"))
+        return ((mu / alpha) * (h.isochoric_invariant1 ** (alpha / 2) - 3)
+                + 0.5 * K * (sp.sqrt(h.invariant3) - 1) ** 2)
+
+UMATHandler(MyOgdenLike()).generate("mysef.f90")
 ```
 
-See the [examples](https://jpsferreira.github.io/hyper-surrogate/examples/) for more usage patterns, including hybrid UMAT export and analytical Fortran generation.
+### Path C — data-driven surrogate
+
+```python
+from hyper_surrogate import (
+    NeoHooke, MLP, Trainer, EnergyStressLoss,
+    create_datasets, extract_weights, HybridUMATEmitter,
+)
+
+material = NeoHooke({"C10": 0.5, "KBULK": 1000.0})
+train_ds, val_ds, in_norm, energy_norm = create_datasets(
+    material, n_samples=4000, input_type="invariants",
+    target_type="energy", deformation_mode="combined_compressible",
+)
+model = MLP(input_dim=3, output_dim=1, hidden_dims=[64, 64, 64], activation="softplus")
+result = Trainer(model, train_ds, val_ds,
+                 loss_fn=EnergyStressLoss(alpha=1.0, beta=1.0),
+                 max_epochs=2000, patience=200).fit()
+exported = extract_weights(result.model, in_norm, energy_norm)
+HybridUMATEmitter(exported).write("neohooke_hybrid.f90")
+```
+
+See the [documentation](https://jpsferreira.github.io/hyper-surrogate/)
+for the full tutorial set, including [custom materials](https://jpsferreira.github.io/hyper-surrogate/tutorials/custom_materials/),
+[anisotropic models](https://jpsferreira.github.io/hyper-surrogate/tutorials/anisotropic_materials/),
+and the [export-path decision tree](https://jpsferreira.github.io/hyper-surrogate/tutorials/export_fortran/).
 
 ## Installation
 
@@ -119,13 +157,15 @@ uv sync --all-groups --extra ml
 
 Runnable scripts are in the [`examples/`](examples/) directory:
 
-| Script                     | Description                                     |
-| -------------------------- | ----------------------------------------------- |
-| `train_neohooke_sef.py`    | Train MLP on NeoHooke SEF with hybrid inference |
-| `train_neohooke_stress.py` | Train MLP on PK2 stress with `StressLoss`       |
-| `train_icnn_energy.py`     | Train ICNN with `EnergyStressLoss`              |
-| `export_hybrid_umat.py`    | End-to-end train + `HybridUMATEmitter` export   |
-| `analytical_umat.py`       | Symbolic material to Fortran via `UMATHandler`  |
+| Script                     | Path | Description                                             |
+| -------------------------- | ---- | ------------------------------------------------------- |
+| `analytical_umat.py`       | A    | Built-in `NeoHooke` → analytical UMAT via `UMATHandler` |
+| `custom_sef.py`            | B    | Custom Ogden-like SEF → analytical UMAT                 |
+| `export_hybrid_umat.py`    | C    | End-to-end train + `HybridUMATEmitter` export           |
+| `train_neohooke_sef.py`    | C    | Train MLP on NeoHooke SEF with hybrid inference         |
+| `train_icnn_energy.py`     | C    | Train ICNN with `EnergyStressLoss`                      |
+| `train_polyconvex.py`      | C    | Train PolyconvexICNN with per-invariant convexity       |
+| `train_holzapfel_ogden.py` | C    | Anisotropic fiber-reinforced training pipeline          |
 
 Run any example with:
 
@@ -135,4 +175,5 @@ uv run python examples/<script>.py
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for
+setup instructions and guidelines.
