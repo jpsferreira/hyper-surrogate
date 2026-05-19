@@ -111,3 +111,30 @@ class DeformationGenerator:
         fs = self._rotate(fs, r2)
         fb = self._rotate(fb, r3)
         return np.matmul(np.matmul(fb, fu), fs)  # type: ignore[no-any-return]
+
+    def volumetric_dilation(self, n: int, j_range: tuple[float, float] = (0.85, 1.15)) -> np.ndarray:
+        """F = J^(1/3) · I, with J sampled uniformly in `j_range`.
+
+        Used to compose `det F ≠ 1` samples on top of the otherwise
+        volume-preserving primitives in this class.  Default range
+        chosen to bracket the J-drift Abaqus produces at typical
+        near-incompressible bulk moduli with ~10x margin.
+        """
+        j = self._rng.uniform(*j_range, size=n)
+        s = j ** (1.0 / 3.0)
+        return np.einsum("n,ij->nij", s, np.eye(3))
+
+    def combined_compressible(
+        self,
+        n: int,
+        stretch_range: tuple[float, float] = (0.4, 3.0),
+        shear_range: tuple[float, float] = (-1.0, 1.0),
+        j_range: tuple[float, float] = (0.85, 1.15),
+    ) -> np.ndarray:
+        """`combined` post-multiplied by a random isotropic dilation so
+        the resulting F spans a real `det F` range.  Closes the J=1
+        training-data hole that leaves `∂W/∂J` unsupervised when the
+        surrogate is deployed in a compressible FE solve."""
+        F = self.combined(n, stretch_range=stretch_range, shear_range=shear_range)
+        Fv = self.volumetric_dilation(n, j_range=j_range)
+        return np.matmul(Fv, F)  # type: ignore[no-any-return]

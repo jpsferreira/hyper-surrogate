@@ -26,7 +26,7 @@ class HybridUMATEmitter:
 
     SUPPORTED_ARCHITECTURES = ("mlp", "polyconvexicnn")
 
-    def __init__(self, exported: ExportedModel) -> None:
+    def __init__(self, exported: ExportedModel, enforce_stress_free_reference: bool = True) -> None:
         arch = exported.metadata.get("architecture")
         if arch not in self.SUPPORTED_ARCHITECTURES:
             msg = f"HybridUMATEmitter supports {self.SUPPORTED_ARCHITECTURES}, got '{arch}'"
@@ -35,6 +35,142 @@ class HybridUMATEmitter:
             msg = "HybridUMATEmitter requires a scalar (output_dim=1) energy model"
             raise ValueError(msg)
         self.exported = exported
+        self.enforce_stress_free_reference = enforce_stress_free_reference
+        if enforce_stress_free_reference:
+            self._W_ref = self._compute_reference_offset()
+            self._dW_dI_ref = self._compute_reference_gradient()
+        else:
+            self._W_ref = 0.0
+            in_dim = self.exported.metadata["input_dim"]
+            self._dW_dI_ref = np.zeros(in_dim)
+
+    # ------------------------------------------------------------------
+    # Reference-configuration offset (Psi(C=I) -> 0 by subtraction)
+    # ------------------------------------------------------------------
+
+    def _reference_input(self) -> tuple[np.ndarray, np.ndarray]:
+        """Reference invariants and their normalized form.
+
+        Returns (x_ref_raw, x_ref_norm).  Raw invariants at C=I:
+        I1_bar=3, I2_bar=3, J=1, and (a0·a0)=1 for any fiber families.
+        """
+        in_dim = self.exported.metadata["input_dim"]
+        x_ref = np.array([3.0, 3.0, 1.0] + [1.0] * (in_dim - 3))
+        in_norm = self.exported.input_normalizer
+        x_norm = x_ref if in_norm is None else (x_ref - in_norm["mean"]) / in_norm["std"]
+        return x_ref, x_norm
+
+    def _compute_reference_offset(self) -> float:
+        """Evaluate the trained network at the reference configuration C=I.
+
+        Subtracting this offset at deployment gives Psi_dep(C=I) = 0 by
+        construction.  Constant; does not affect stress or tangent.
+        """
+        _x_ref, x_norm = self._reference_input()
+        arch = self.exported.metadata.get("architecture")
+        if arch == "polyconvexicnn":
+            return float(self._poly_forward(x_norm))
+        return float(self._mlp_forward(x_norm))
+
+    def _compute_reference_gradient(self) -> np.ndarray:
+        """dW/dI at the reference configuration C=I.
+
+        Only invariants whose dI/dC does NOT vanish at C=I contribute to
+        sigma at the reference; for the standard mechanics inputs that
+        is J (always) and any fiber invariants I4, I5 (when present).
+        The deviatoric invariants I1_bar, I2_bar both have dI/dC = 0 at
+        reference, so their trained dW/dI value never reaches sigma at
+        C=I and is not corrected.
+
+        We compute dW/dI by finite differences on the numpy forward pass
+        (chosen for emitter-portability and robustness across the
+        polyconvex branched architecture).  Tolerance is set by
+        `_FD_EPS`; the result is then passed through 1/in_std to convert
+        from normalized-input gradient to raw-invariant gradient (mirror
+        of what the Fortran does at runtime).
+        """
+        in_dim = self.exported.metadata["input_dim"]
+        _x_ref, x_norm = self._reference_input()
+        arch = self.exported.metadata.get("architecture")
+        forward = self._poly_forward if arch == "polyconvexicnn" else self._mlp_forward
+
+        # Central-difference gradient w.r.t. normalized inputs.
+        eps = 1e-5
+        g_norm = np.zeros(in_dim)
+        for k in range(in_dim):
+            xp = x_norm.copy()
+            xp[k] += eps
+            xm = x_norm.copy()
+            xm[k] -= eps
+            g_norm[k] = (forward(xp) - forward(xm)) / (2.0 * eps)
+
+        # Convert to gradient w.r.t. raw invariants (dW/dI_alpha).
+        in_norm = self.exported.input_normalizer
+        g_raw = g_norm if in_norm is None else g_norm / np.asarray(in_norm["std"])
+
+        # Mask: zero out the components for deviatoric invariants (indices
+        # 0 and 1, corresponding to I1_bar and I2_bar) since their dI/dC
+        # vanishes at reference and the trained gradient there has no
+        # bearing on sigma(C=I).  Keep components for J (index 2) and any
+        # subsequent fiber invariants (indices >= 3).
+        mask = np.ones(in_dim)
+        mask[0] = 0.0  # I1_bar
+        if in_dim >= 2:
+            mask[1] = 0.0  # I2_bar
+        return g_raw * mask
+
+    def _mlp_forward(self, x: np.ndarray) -> float:
+        """Numpy forward pass through an MLP, mirroring the emitted Fortran."""
+        layers = self.exported.layers
+        weights = self.exported.weights
+        h = x
+        for layer in layers:
+            w = weights[layer.weights]
+            b = weights[layer.bias]
+            a = w @ h + b
+            act = layer.activation
+            if act == "softplus":
+                h = np.log1p(np.exp(a))
+            elif act == "tanh":
+                h = np.tanh(a)
+            elif act == "sigmoid":
+                h = 1.0 / (1.0 + np.exp(-a))
+            elif act == "relu":
+                h = np.maximum(0.0, a)
+            else:  # identity
+                h = a
+        return float(h[0])
+
+    def _poly_forward(self, x: np.ndarray) -> float:
+        """Numpy forward pass for the polyconvex (branched-ICNN) emitter."""
+        weights = self.exported.weights
+        branches = self.exported.metadata["branches"]
+
+        def _softplus(w: np.ndarray) -> np.ndarray:
+            return np.log1p(np.exp(w))
+
+        total = 0.0
+        for bi, branch in enumerate(branches):
+            b_layers = branch["layers"]
+            indices = branch["input_indices"]
+            n_hidden = len(b_layers) - 1
+            xb = x[indices]
+            prefix = f"branches.{bi}."
+            # Layer 0
+            W0 = weights[b_layers[0]["weights"]]
+            b0 = weights[b_layers[0]["bias"]]
+            z = np.log1p(np.exp(W0 @ xb + b0))
+            for li in range(1, n_hidden):
+                wz = _softplus(weights[b_layers[li]["weights"]])
+                wx = weights[prefix + f"wx_layers.{li}.weight"]
+                bli = weights[b_layers[li]["bias"]]
+                z = np.log1p(np.exp(wz @ z + wx @ xb + bli))
+            # Output (linear)
+            wz_out = _softplus(weights[b_layers[n_hidden]["weights"]])
+            wxf = weights[prefix + "wx_final.weight"]
+            b_out = weights[b_layers[n_hidden]["bias"]]
+            total += float((wz_out @ z + wxf @ xb + b_out)[0])
+        return total
 
     # ------------------------------------------------------------------
     # Fortran formatting helpers
@@ -43,7 +179,9 @@ class HybridUMATEmitter:
     @staticmethod
     def _fmt_1d(arr: np.ndarray, name: str) -> str:
         n = arr.shape[0]
-        vals = ", &\n    ".join(", ".join(f"{v:.15e}d0" for v in arr[i : i + 4]) for i in range(0, n, 4))
+        vals = ", &\n    ".join(
+            ", ".join(f"{v:.15e}".replace("e", "d") for v in arr[i : i + 4]) for i in range(0, n, 4)
+        )
         return f"DOUBLE PRECISION, PARAMETER :: {name}({n}) = (/ &\n    {vals} /)"
 
     @staticmethod
@@ -51,7 +189,7 @@ class HybridUMATEmitter:
         rows, cols = arr.shape
         # Fortran is column-major
         vals = ", &\n    ".join(
-            ", ".join(f"{v:.15e}d0" for v in arr.T.flat[i : i + 4]) for i in range(0, rows * cols, 4)
+            ", ".join(f"{v:.15e}".replace("e", "d") for v in arr.T.flat[i : i + 4]) for i in range(0, rows * cols, 4)
         )
         return (
             f"DOUBLE PRECISION, PARAMETER :: {name}({rows},{cols}) = RESHAPE((/ &\n    {vals} /), (/ {rows}, {cols} /))"
@@ -83,6 +221,13 @@ class HybridUMATEmitter:
         if self.exported.input_normalizer:
             lines.append(self._fmt_1d(self.exported.input_normalizer["mean"], "in_mean"))
             lines.append(self._fmt_1d(self.exported.input_normalizer["std"], "in_std"))
+
+        # Reference-configuration offset: ensures Psi(C=I) = 0 exactly at deployment.
+        lines.append("DOUBLE PRECISION, PARAMETER :: W_REF_OFFSET = " + f"{self._W_ref:.15e}".replace("e", "d"))
+        # Reference-configuration gradient: ensures sigma(C=I) = 0 exactly
+        # at deployment.  Mask zeroes out deviatoric invariants whose
+        # dI/dC vanishes at reference anyway (see _compute_reference_gradient).
+        lines.append(self._fmt_1d(self._dW_dI_ref, "dW_dI_REF"))
 
         return "\n".join(lines)
 
@@ -120,6 +265,9 @@ class HybridUMATEmitter:
         if self.exported.input_normalizer:
             lines.append(self._fmt_1d(self.exported.input_normalizer["mean"], "in_mean"))
             lines.append(self._fmt_1d(self.exported.input_normalizer["std"], "in_std"))
+
+        # Reference-configuration offset for the polyconvex (sum-of-branches) emitter.
+        lines.append("DOUBLE PRECISION, PARAMETER :: W_REF_OFFSET = " + f"{self._W_ref:.15e}".replace("e", "d"))
 
         return "\n".join(lines)
 
@@ -198,9 +346,9 @@ class HybridUMATEmitter:
                 lines.append(f"d2act{i} = dact{i} * (1.0d0 - 2.0d0 * z{i})")
             lines.append("")
 
-        # W = z_{last}(1) (scalar output)
+        # W = z_{last}(1) (scalar output), shifted to enforce W(C=I)=0 exactly.
         last = n_layers - 1
-        lines.append(f"W_nn = z{last}(1)")
+        lines.append(f"W_nn = z{last}(1) - W_REF_OFFSET")
         lines.append("")
 
         # --- Backward pass: dW/dx_norm ---
@@ -226,10 +374,18 @@ class HybridUMATEmitter:
         lines.append("END DO")
         lines.append("")
 
-        # dW/dI = dW/dx_norm / std (chain rule for normalization)
+        # dW/dI = dW/dx_norm / std (chain rule for normalization).  Then
+        # subtract the reference-configuration dW/dI for those invariants
+        # whose dI/dC does NOT vanish at C=I (J and fiber invariants),
+        # so that sigma(C=I) = 0 exactly.  Components for I1_bar and
+        # I2_bar are left alone (their chain-rule contribution to sigma
+        # at C=I is already zero).
         lines.append("! Convert gradient to raw invariant space: dW/dI = dW/dx_norm / std")
         for k in range(in_dim):
             lines.append(f"dW_dI({k + 1}) = grad_x({k + 1}) / in_std({k + 1})")
+        lines.append("! Subtract reference-configuration dW/dI (stress freedom at C=I)")
+        for k in range(in_dim):
+            lines.append(f"dW_dI({k + 1}) = dW_dI({k + 1}) - dW_dI_REF({k + 1})")
         lines.append("")
 
         # --- Jacobian propagation: P_i = W_i * J_{i-1}, J_i = diag(dact_i) * P_i ---
@@ -589,6 +745,15 @@ class HybridUMATEmitter:
                     )
             lines.append("")
 
+        # Apply reference-configuration offset so Psi(C=I) = 0 exactly,
+        # and subtract dW/dI(ref) for J + fiber invariants so sigma(C=I) = 0.
+        lines.append("W_nn = W_nn - W_REF_OFFSET")
+        in_dim = self.exported.metadata["input_dim"]
+        lines.append("! Subtract reference-configuration dW/dI (stress freedom at C=I)")
+        for k in range(in_dim):
+            lines.append(f"dW_dI({k + 1}) = dW_dI({k + 1}) - dW_dI_REF({k + 1})")
+        lines.append("")
+
         return "\n".join(lines)
 
     @staticmethod
@@ -709,7 +874,8 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
   DOUBLE PRECISION :: dI1_dC(3,3), dI2_dC(3,3), dJ_dC(3,3)
   DOUBLE PRECISION :: eye3(3,3)
   DOUBLE PRECISION :: Jm23, Jm43
-  INTEGER :: ii, jj, kk, ll
+  INTEGER :: ii, jj, kk, ll, mm, nn, pp, qq
+  DOUBLE PRECISION :: val
 {self._emit_aniso_declarations(num_fibers) if aniso else ""}
   ! d²W/dI² from analytical NN Hessian
   DOUBLE PRECISION :: d2W_dI2({n_inv},{n_inv})
@@ -854,7 +1020,6 @@ SUBROUTINE umat(stress, statev, ddsdde, sse, spd, scd, rpl, &
 
   BLOCK
     DOUBLE PRECISION :: dIdC(3, 3, {n_inv})  ! dIdC(:,:,k) = dIk/dC
-    DOUBLE PRECISION :: val
 
     DO ii = 1, 3
       DO jj = 1, 3

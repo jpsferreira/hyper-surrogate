@@ -66,21 +66,61 @@ def _pk2_voigt(material: Any, c_batch: np.ndarray) -> np.ndarray:
     ])
 
 
-def create_datasets(
+def create_datasets(  # noqa: C901  -- branchy by design; one branch per supported deformation_mode
     material: Any,
     n_samples: int,
     input_type: Literal["invariants", "cauchy_green"] = "invariants",
     target_type: Literal["energy", "pk2_voigt", "pk2_voigt+cmat_voigt"] = "pk2_voigt",
     val_fraction: float = 0.15,
     seed: int = 42,
+    deformation_mode: Literal["combined", "combined_compressible", "uniaxial", "biaxial", "shear"] = "combined",
+    stretch_range: tuple[float, float] | None = None,
+    shear_range: tuple[float, float] | None = None,
+    j_range: tuple[float, float] | None = None,
 ) -> tuple[MaterialDataset, MaterialDataset, Normalizer, Normalizer]:
-    """Generate data, normalize, split, and wrap in datasets."""
+    """Generate data, normalize, split, and wrap in datasets.
+
+    deformation_mode selects the loading subspace. "uniaxial" mirrors the
+    canonical experimental tensile-test setup and is recommended when a
+    constrained architecture (ICNN, Polyconvex) struggles to fit the full
+    combined deformation space.  "combined_compressible" extends "combined"
+    with a random isotropic dilation so the resulting F has det F ≠ 1,
+    supplying training signal for the J-direction of compressible
+    hyperelastic surrogates.
+    """
     from hyper_surrogate.data.deformation import DeformationGenerator
     from hyper_surrogate.mechanics.kinematics import Kinematics
 
     # Generate deformations
     gen = DeformationGenerator(seed=seed)
-    F = gen.combined(n_samples)
+    sr = stretch_range
+    hr = shear_range
+    jr = j_range
+    if deformation_mode == "uniaxial":
+        F = gen.uniaxial(n_samples) if sr is None else gen.uniaxial(n_samples, stretch_range=sr)
+    elif deformation_mode == "biaxial":
+        F = gen.biaxial(n_samples) if sr is None else gen.biaxial(n_samples, stretch_range=sr)
+    elif deformation_mode == "shear":
+        F = gen.shear(n_samples) if hr is None else gen.shear(n_samples, shear_range=hr)
+    elif deformation_mode == "combined_compressible":
+        kw: dict[str, Any] = {}
+        if sr is not None:
+            kw["stretch_range"] = sr
+        if hr is not None:
+            kw["shear_range"] = hr
+        if jr is not None:
+            kw["j_range"] = jr
+        F = gen.combined_compressible(n_samples, **kw)
+    else:  # "combined"
+        if sr is None and hr is None:
+            F = gen.combined(n_samples)
+        else:
+            kw = {}
+            if sr is not None:
+                kw["stretch_range"] = sr
+            if hr is not None:
+                kw["shear_range"] = hr
+            F = gen.combined(n_samples, **kw)
     C = Kinematics.right_cauchy_green(F)
 
     # Compute inputs
