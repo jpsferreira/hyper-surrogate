@@ -16,6 +16,7 @@ nav:
   - Materials: materials.md
   - Tutorials:
       - Getting Started: tutorials/getting_started.md
+      - Custom Materials: tutorials/custom_materials.md
       - Data Generation: tutorials/data_generation.md
       - Training Surrogates: tutorials/training_surrogates.md
       - Fortran Export: tutorials/export_fortran.md

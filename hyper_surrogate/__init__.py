@@ -2,6 +2,9 @@
 # Data (always available)
 from hyper_surrogate.data.dataset import MaterialDataset, Normalizer, create_datasets
 from hyper_surrogate.data.deformation import DeformationGenerator
+
+# Symbolic Fortran emitter (no torch required)
+from hyper_surrogate.export.fortran.analytical import UMATHandler
 from hyper_surrogate.mechanics.kinematics import Kinematics
 from hyper_surrogate.mechanics.materials import (
     Demiray,
@@ -60,6 +63,7 @@ __all__ = [
     "Ogden",
     "Reporter",
     "SymbolicHandler",
+    "UMATHandler",
     "Yeoh",
     "create_datasets",
 ]

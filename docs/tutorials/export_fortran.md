@@ -275,7 +275,7 @@ emitter.write("hybrid_umat_polyconvex.f90")
 
 ## 4. Analytical UMAT (`UMATHandler`)
 
-For when you want a Fortran UMAT directly from a symbolic material definition — **no neural network involved**:
+For when you want a Fortran UMAT directly from a symbolic material definition — **no neural network involved**. This is the recommended path whenever the strain-energy function is available in closed form, including custom user-defined SEFs (see [Custom materials](custom_materials.md)).
 
 ```python
 from hyper_surrogate.mechanics.materials import NeoHooke
@@ -346,10 +346,10 @@ UMATHandler(mat).generate("demiray_umat.f")
 ### Decision flowchart
 
 ```
-Need a surrogate?
-├── No  ──────────────> UMATHandler (analytical, symbolic)
-└── Yes
-    └── Need full UMAT (stress + tangent)?
+Is the SEF available in closed form?
+├── Yes ────────────> UMATHandler (analytical, symbolic)
+└── No (data-driven only)
+    └── Need a full UMAT (stress + tangent)?
         ├── No  ──────> FortranEmitter (standalone NN module)
         └── Yes ──────> HybridUMATEmitter (NN energy + analytical mechanics)
 ```

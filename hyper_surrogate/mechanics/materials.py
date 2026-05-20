@@ -913,3 +913,137 @@ class HolzapfelOgdenBiaxial(Material):
         param_vals = list(self._params.values())
         results = fn(*inv_vals, *param_vals)
         return np.asarray(results, dtype=float)
+
+
+class PeirlinckArtery(Material):
+    """Discovered arterial SEF from Peirlinck et al. (2024).
+
+    Reference: M. Peirlinck, J. A. Hurtado, M. K. Rausch, A. Buganza Tepole,
+    E. Kuhl, "A universal material model subroutine for soft matter
+    systems", Engineering with Computers (2024). arXiv:2404.13144.
+
+    The "discovered" SEF (their Section 4.3) for thoracic aortic tissue
+    fitted to 5-protocol biaxial data (Niestrawska 2016, Niestrawska 2018):
+
+        W = (mu1 / 2) * (I1_bar - 3)
+          + (a / 2b) * (exp(b * (I1_bar - 3)) - 1)
+          + sum_{k=1,2} (mu5 / 2) * (I5_k - 1)^2
+
+    Two fiber families at angles +- alpha against the circumferential
+    direction. Default parameters: media layer of the human aortic arch,
+    alpha = 7.0 deg, (mu1, a, b, mu5) = (33.45, 3.74, 6.66, 2.17) kPa.
+
+    Parameter sets reported in the paper (kPa, deg):
+        media:      mu1=33.45, a=3.74, b=6.66,  mu5=2.17, alpha=+-7.00
+        adventitia: mu1=8.30,  a=1.42, b=6.34,  mu5=0.49, alpha=+-66.78
+    """
+
+    DEFAULT_PARAMS: ClassVar[dict[str, float]] = {
+        "mu1": 33.45,
+        "a": 3.74,
+        "b": 6.66,
+        "mu5": 2.17,
+        "KBULK": 1000.0,
+    }
+
+    @classmethod
+    def media(cls) -> PeirlinckArtery:
+        return cls(
+            parameters={"mu1": 33.45, "a": 3.74, "b": 6.66, "mu5": 2.17, "KBULK": 1000.0},
+            fiber_angle_deg=7.0,
+        )
+
+    @classmethod
+    def adventitia(cls) -> PeirlinckArtery:
+        return cls(
+            parameters={"mu1": 8.30, "a": 1.42, "b": 6.34, "mu5": 0.49, "KBULK": 1000.0},
+            fiber_angle_deg=66.78,
+        )
+
+    def __init__(
+        self,
+        parameters: dict[str, float] | None = None,
+        fiber_directions: list[np.ndarray] | None = None,
+        fiber_angle_deg: float | None = None,
+    ) -> None:
+        params = {**self.DEFAULT_PARAMS, **(parameters or {})}
+        if fiber_directions is None:
+            theta = np.radians(7.0 if fiber_angle_deg is None else fiber_angle_deg)
+            fiber_directions = [
+                np.array([np.cos(theta), np.sin(theta), 0.0]),
+                np.array([np.cos(theta), -np.sin(theta), 0.0]),
+            ]
+        if len(fiber_directions) != 2:
+            msg = f"PeirlinckArtery requires exactly 2 fiber directions, got {len(fiber_directions)}"
+            raise ValueError(msg)
+        super().__init__(params, fiber_directions=fiber_directions)
+
+    def _volumetric(self, j: Symbol) -> Expr:
+        KBULK = self._symbols["KBULK"]
+        i3 = j**2
+        return Rational(1, 4) * KBULK * (i3 - 1 - 2 * log(i3 ** Rational(1, 2)))
+
+    @property
+    def sef(self) -> Expr:
+        msg = "PeirlinckArtery.sef requires fiber invariants; use sef_from_all_invariants instead"
+        raise NotImplementedError(msg)
+
+    def sef_from_invariants(
+        self,
+        i1_bar: Symbol,
+        i2_bar: Symbol,
+        j: Symbol,
+        i4: Symbol | None = None,
+        i5: Symbol | None = None,
+    ) -> Expr:
+        msg = "PeirlinckArtery has 2 fibers; use sef_from_all_invariants instead"
+        raise NotImplementedError(msg)
+
+    def sef_from_all_invariants(
+        self,
+        i1_bar: Symbol,
+        i2_bar: Symbol,
+        j: Symbol,
+        fiber_invariants: list[tuple[Symbol, Symbol]] | None = None,
+    ) -> Expr:
+        mu1 = self._symbols["mu1"]
+        a_s = self._symbols["a"]
+        b_s = self._symbols["b"]
+        mu5 = self._symbols["mu5"]
+
+        W: Expr = (mu1 / 2) * (i1_bar - 3) + (a_s / (2 * b_s)) * (sympy_exp(b_s * (i1_bar - 3)) - 1)
+        if fiber_invariants is not None:
+            for _i4_k, i5_k in fiber_invariants:
+                W = W + (mu5 / 2) * (i5_k - 1) ** 2
+        return W + self._volumetric(j)
+
+    def evaluate_energy(self, c_batch: np.ndarray) -> np.ndarray:
+        """Evaluate strain energy via invariants (mirrors HolzapfelOgdenBiaxial)."""
+        from sympy import lambdify as sym_lambdify
+
+        from hyper_surrogate.mechanics.kinematics import Kinematics
+
+        i1s, i2s, js = Symbol("I1b"), Symbol("I2b"), Symbol("J")
+        fiber_inv_pairs: list[tuple[Symbol, Symbol]] = []
+        inv_syms: list[Symbol] = [i1s, i2s, js]
+        for k in range(self.num_fiber_families):
+            i4k, i5k = Symbol(f"I4_{k}"), Symbol(f"I5_{k}")
+            inv_syms.extend([i4k, i5k])
+            fiber_inv_pairs.append((i4k, i5k))
+
+        W = self.sef_from_all_invariants(i1s, i2s, js, fiber_inv_pairs)
+        param_syms = list(self._symbols.values())
+        fn = sym_lambdify((*inv_syms, *param_syms), W, modules="numpy")
+
+        i1 = Kinematics.isochoric_invariant1(c_batch)
+        i2 = Kinematics.isochoric_invariant2(c_batch)
+        j = np.sqrt(Kinematics.det_invariant(c_batch))
+
+        inv_vals: list[np.ndarray] = [i1, i2, j]
+        for a0 in self._fiber_directions:
+            inv_vals.append(Kinematics.fiber_invariant4(c_batch, a0))
+            inv_vals.append(Kinematics.fiber_invariant5(c_batch, a0))
+
+        param_vals = list(self._params.values())
+        results = fn(*inv_vals, *param_vals)
+        return np.asarray(results, dtype=float)
