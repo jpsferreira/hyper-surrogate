@@ -180,3 +180,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .qodo
+
+# JOSS PDF is built on JOSS's side from paper.md; do not commit local previews.
+paper/joss/paper.pdf

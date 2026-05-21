@@ -1,0 +1,2 @@
+# Prettier corrupts LaTeX embedded in markdown (converts _ to * inside \includegraphics paths and math).
+paper/joss/paper.md
